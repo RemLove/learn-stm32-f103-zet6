@@ -1,0 +1,55 @@
+# Keil MDK
+*.uvguix.*
+*.uvgui.*
+*.scvd
+*.uvoptx
+*.uvprojx
+*.uvopt
+*.uvproj
+*.Administrator
+*.dbgdt
+JLink*
+*.iex
+*.tra
+*.map
+*.bin
+*.hex
+*.axf
+*.o
+*.d
+*.crf
+*.lnp
+*.lst
+*.dep
+*.htm
+*.dep
+*.plg
+*.bak
+*.ddl
+*.ini
+RTE/
+*.S19
+*.elf
+
+# Build output
+Listings/
+Objects/
+*.build_log.htm
+*.clean
+
+# Debug
+DebugConfig/
+debug/
+*.Debug
+
+# Editor
+*.lst
+*.m51
+*.m66
+*.tmp
+*.~
+*.orig
+
+# OS
+Thumbs.db
+.DS_Store

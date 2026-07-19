@@ -1,0 +1,30 @@
+#include"stm32f10x.h"
+int main(void)//PB5,PE5
+{
+	//1.开启GPIOB和GPIOE的时钟
+	//*(uint32_t*)(0x40021000+0x18)=64+8;
+	//RCC->APB2ENR=64+8;
+	//RCC->APB2ENR|=(1<<6);
+	//RCC->APB2ENR|=(1<<3);
+	RCC->APB2ENR|=RCC_APB2ENR_IOPBEN;
+	RCC->APB2ENR|=RCC_APB2ENR_IOPEEN;
+	//2.配置PB5的工作模式
+	//*(uint32_t*)(0X40010C00+0x00)=0x03<<20;
+	//GPIOB->CRL=0X03<<20;
+	//GPIOB->CRL|=1<<20;
+	GPIOB->CRL&=~GPIO_CRL_CNF5;
+	GPIOB->CRL|=GPIO_CRL_MODE5;
+	//3.向PB5写入低电平，点亮
+	//*(uint32_t*)(0X40010C00+0x0C)&=~(1<<5);
+	GPIOB->ODR&=~(1<<5);
+	//2.配置PE5的工作模式
+	//*(uint32_t*)(0x40011800+0x00)=0x03<<20;
+	//GPIOE->CRL&=~GPIO_CRL_CNF5;
+	//GPIOE->CRL|=GPIO_CRL_MODE5;
+	//GPIOE->CRL|=1<<20;
+	//GPIOE->CRL|=1<<21;
+	//3.向PE5写入低电平，点亮
+	//*(uint32_t*)(0x40011800+0x0C)&=~(1<<5);
+	while(1)
+	{}
+}
