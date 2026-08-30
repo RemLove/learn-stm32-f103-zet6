@@ -50,6 +50,10 @@ debug/
 *.~
 *.orig
 
+# Logs
+*.log
+*.log.lock
+
 # OS
 Thumbs.db
 .DS_Store
