@@ -24,7 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,7 +45,10 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+uint8_t tx_data[8];
+RxMsg  rx_msg[8];
+uint8_t rx_cnt = 0;
+uint8_t loop_cnt = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -92,6 +95,18 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
+  printf("\r\n========== CAN 回环测试 ==========\r\n");
+  printf("模式: 静默回环, 波特率 100kbps\r\n\r\n");
+
+  FilterConfig();
+
+  if (HAL_CAN_Start(&hcan) != HAL_OK)
+  {
+    printf("CAN 启动失败!\r\n");
+    Error_Handler();
+  }
+  printf("CAN 启动成功\r\n\r\n");
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -101,6 +116,48 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+    /* 1. 准备要发送的数据 */
+    for (uint8_t i = 0; i < 8; i++)
+    {
+      tx_data[i] = loop_cnt + i;
+    }
+
+    /* 2. 发送标准数据帧, ID=0x321, 长度 8 */
+    printf("TX[%d] ID=0x%03X len=8 data:", loop_cnt, 0x321);
+    for (uint8_t i = 0; i < 8; i++)
+    {
+      printf(" %02X", tx_data[i]);
+    }
+    printf("\r\n");
+    SendMsg(0x321, tx_data, 8);
+
+    /* 3. 等待回环报文进入 FIFO0 */
+    uint32_t tick = HAL_GetTick();
+    while (HAL_CAN_GetRxFifoFillLevel(&hcan, CAN_RX_FIFO0) == 0)
+    {
+      if ((HAL_GetTick() - tick) > 100)
+      {
+        break;
+      }
+    }
+
+    /* 4. 接收并打印 */
+    RxMsg1(rx_msg, &rx_cnt);
+    for (uint8_t i = 0; i < rx_cnt; i++)
+    {
+      printf("RX[%d] ID=0x%03X len=%d data:", loop_cnt, rx_msg[i].stdid, rx_msg[i].len);
+      for (uint8_t j = 0; j < rx_msg[i].len; j++)
+      {
+        printf(" %02X", rx_msg[i].data[j]);
+      }
+      printf("\r\n");
+    }
+
+    printf("\r\n");
+    loop_cnt++;
+    HAL_Delay(1000);
+
   }
   /* USER CODE END 3 */
 }
