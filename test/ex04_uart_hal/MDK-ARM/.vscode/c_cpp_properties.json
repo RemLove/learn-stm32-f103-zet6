@@ -4,16 +4,16 @@
             "name": "windows-gcc-x64",
             "includePath": [
                 "${workspaceFolder}/**",
-                "d:\\keil5\\stm32zet6\\test\\ex02_button_hal\\Core\\Inc",
-                "d:\\keil5\\stm32zet6\\test\\ex02_button_hal\\Drivers\\STM32F1xx_HAL_Driver\\Inc\\Legacy",
-                "d:\\keil5\\stm32zet6\\test\\ex02_button_hal\\Drivers\\STM32F1xx_HAL_Driver\\Inc",
-                "d:\\keil5\\stm32zet6\\test\\ex02_button_hal\\Drivers\\CMSIS\\Device\\ST\\STM32F1xx\\Include",
-                "d:\\keil5\\stm32zet6\\test\\ex02_button_hal\\Drivers\\CMSIS\\Include",
+                "d:\\keil5\\stm32zet6\\test\\ex04_uart_hal\\Core\\Inc",
+                "d:\\keil5\\stm32zet6\\test\\ex04_uart_hal\\Drivers\\STM32F1xx_HAL_Driver\\Inc",
+                "d:\\keil5\\stm32zet6\\test\\ex04_uart_hal\\Drivers\\STM32F1xx_HAL_Driver\\Inc\\Legacy",
+                "d:\\keil5\\stm32zet6\\test\\ex04_uart_hal\\Drivers\\CMSIS\\Device\\ST\\STM32F1xx\\Include",
+                "d:\\keil5\\stm32zet6\\test\\ex04_uart_hal\\Drivers\\CMSIS\\Include",
                 "D:\\keil5\\core\\ARM\\ARMCC\\include",
                 "D:\\keil5\\core\\ARM\\ARMCC\\include\\rw",
-                "d:\\keil5\\stm32zet6\\test\\ex02_button_hal\\MDK-ARM",
-                "d:\\keil5\\stm32zet6\\test\\ex02_button_hal\\Core\\Src",
-                "d:\\keil5\\stm32zet6\\test\\ex02_button_hal\\Drivers\\STM32F1xx_HAL_Driver\\Src"
+                "d:\\keil5\\stm32zet6\\test\\ex04_uart_hal\\MDK-ARM",
+                "d:\\keil5\\stm32zet6\\test\\ex04_uart_hal\\Core\\Src",
+                "d:\\keil5\\stm32zet6\\test\\ex04_uart_hal\\Drivers\\STM32F1xx_HAL_Driver\\Src"
             ],
             "defines": [
                 "USE_HAL_DRIVER",
@@ -97,18 +97,18 @@
             "compilerPath": "D:/VS Code/w64devkit/bin/gcc.exe"
         },
         {
-            "name": "ex02_button_hal",
+            "name": "ex04_uart_hal",
             "includePath": [
-                "d:\\keil5\\stm32zet6\\test\\ex02_button_hal\\Core\\Inc",
-                "d:\\keil5\\stm32zet6\\test\\ex02_button_hal\\Drivers\\STM32F1xx_HAL_Driver\\Inc\\Legacy",
-                "d:\\keil5\\stm32zet6\\test\\ex02_button_hal\\Drivers\\STM32F1xx_HAL_Driver\\Inc",
-                "d:\\keil5\\stm32zet6\\test\\ex02_button_hal\\Drivers\\CMSIS\\Device\\ST\\STM32F1xx\\Include",
-                "d:\\keil5\\stm32zet6\\test\\ex02_button_hal\\Drivers\\CMSIS\\Include",
+                "d:\\keil5\\stm32zet6\\test\\ex04_uart_hal\\Core\\Inc",
+                "d:\\keil5\\stm32zet6\\test\\ex04_uart_hal\\Drivers\\STM32F1xx_HAL_Driver\\Inc",
+                "d:\\keil5\\stm32zet6\\test\\ex04_uart_hal\\Drivers\\STM32F1xx_HAL_Driver\\Inc\\Legacy",
+                "d:\\keil5\\stm32zet6\\test\\ex04_uart_hal\\Drivers\\CMSIS\\Device\\ST\\STM32F1xx\\Include",
+                "d:\\keil5\\stm32zet6\\test\\ex04_uart_hal\\Drivers\\CMSIS\\Include",
                 "D:\\keil5\\core\\ARM\\ARMCC\\include",
                 "D:\\keil5\\core\\ARM\\ARMCC\\include\\rw",
-                "d:\\keil5\\stm32zet6\\test\\ex02_button_hal\\MDK-ARM",
-                "d:\\keil5\\stm32zet6\\test\\ex02_button_hal\\Core\\Src",
-                "d:\\keil5\\stm32zet6\\test\\ex02_button_hal\\Drivers\\STM32F1xx_HAL_Driver\\Src"
+                "d:\\keil5\\stm32zet6\\test\\ex04_uart_hal\\MDK-ARM",
+                "d:\\keil5\\stm32zet6\\test\\ex04_uart_hal\\Core\\Src",
+                "d:\\keil5\\stm32zet6\\test\\ex04_uart_hal\\Drivers\\STM32F1xx_HAL_Driver\\Src"
             ],
             "defines": [
                 "USE_HAL_DRIVER",

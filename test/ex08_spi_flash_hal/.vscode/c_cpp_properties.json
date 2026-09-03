@@ -1,0 +1,19 @@
+{
+  "configurations": [
+    {
+      "name": "windows-gcc-x64",
+      "includePath": [
+        "${workspaceFolder}/**"
+      ],
+      "defines": [
+        "USE_HAL_DRIVER",
+        "STM32F103xE"
+      ],
+      "intelliSenseMode": "windows-gcc-x64",
+      "cStandard": "${default}",
+      "cppStandard": "${default}",
+      "compilerPath": "D:/VS Code/w64devkit/bin/gcc.exe"
+    }
+  ],
+  "version": 4
+}
