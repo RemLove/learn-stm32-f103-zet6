@@ -4,16 +4,16 @@
             "name": "windows-gcc-x64",
             "includePath": [
                 "${workspaceFolder}/**",
-                "d:\\keil5\\stm32zet6\\test\\ex09_ic_hal\\Core\\Inc",
-                "d:\\keil5\\stm32zet6\\test\\ex09_ic_hal\\Drivers\\STM32F1xx_HAL_Driver\\Inc",
-                "d:\\keil5\\stm32zet6\\test\\ex09_ic_hal\\Drivers\\STM32F1xx_HAL_Driver\\Inc\\Legacy",
-                "d:\\keil5\\stm32zet6\\test\\ex09_ic_hal\\Drivers\\CMSIS\\Device\\ST\\STM32F1xx\\Include",
-                "d:\\keil5\\stm32zet6\\test\\ex09_ic_hal\\Drivers\\CMSIS\\Include",
+                "d:\\keil5\\stm32zet6\\test\\ex10_led_time_hal\\Core\\Inc",
+                "d:\\keil5\\stm32zet6\\test\\ex10_led_time_hal\\Drivers\\STM32F1xx_HAL_Driver\\Inc\\Legacy",
+                "d:\\keil5\\stm32zet6\\test\\ex10_led_time_hal\\Drivers\\STM32F1xx_HAL_Driver\\Inc",
+                "d:\\keil5\\stm32zet6\\test\\ex10_led_time_hal\\Drivers\\CMSIS\\Device\\ST\\STM32F1xx\\Include",
+                "d:\\keil5\\stm32zet6\\test\\ex10_led_time_hal\\Drivers\\CMSIS\\Include",
                 "D:\\keil5\\core\\ARM\\ARMCC\\include",
                 "D:\\keil5\\core\\ARM\\ARMCC\\include\\rw",
-                "d:\\keil5\\stm32zet6\\test\\ex09_ic_hal\\MDK-ARM",
-                "d:\\keil5\\stm32zet6\\test\\ex09_ic_hal\\Core\\Src",
-                "d:\\keil5\\stm32zet6\\test\\ex09_ic_hal\\Drivers\\STM32F1xx_HAL_Driver\\Src"
+                "d:\\keil5\\stm32zet6\\test\\ex10_led_time_hal\\MDK-ARM",
+                "d:\\keil5\\stm32zet6\\test\\ex10_led_time_hal\\Core\\Src",
+                "d:\\keil5\\stm32zet6\\test\\ex10_led_time_hal\\Drivers\\STM32F1xx_HAL_Driver\\Src"
             ],
             "defines": [
                 "USE_HAL_DRIVER",
@@ -97,18 +97,18 @@
             "compilerPath": "D:/VS Code/w64devkit/bin/gcc.exe"
         },
         {
-            "name": "ex09_ic_hal",
+            "name": "ex10_led_time_hal",
             "includePath": [
-                "d:\\keil5\\stm32zet6\\test\\ex09_ic_hal\\Core\\Inc",
-                "d:\\keil5\\stm32zet6\\test\\ex09_ic_hal\\Drivers\\STM32F1xx_HAL_Driver\\Inc",
-                "d:\\keil5\\stm32zet6\\test\\ex09_ic_hal\\Drivers\\STM32F1xx_HAL_Driver\\Inc\\Legacy",
-                "d:\\keil5\\stm32zet6\\test\\ex09_ic_hal\\Drivers\\CMSIS\\Device\\ST\\STM32F1xx\\Include",
-                "d:\\keil5\\stm32zet6\\test\\ex09_ic_hal\\Drivers\\CMSIS\\Include",
+                "d:\\keil5\\stm32zet6\\test\\ex10_led_time_hal\\Core\\Inc",
+                "d:\\keil5\\stm32zet6\\test\\ex10_led_time_hal\\Drivers\\STM32F1xx_HAL_Driver\\Inc\\Legacy",
+                "d:\\keil5\\stm32zet6\\test\\ex10_led_time_hal\\Drivers\\STM32F1xx_HAL_Driver\\Inc",
+                "d:\\keil5\\stm32zet6\\test\\ex10_led_time_hal\\Drivers\\CMSIS\\Device\\ST\\STM32F1xx\\Include",
+                "d:\\keil5\\stm32zet6\\test\\ex10_led_time_hal\\Drivers\\CMSIS\\Include",
                 "D:\\keil5\\core\\ARM\\ARMCC\\include",
                 "D:\\keil5\\core\\ARM\\ARMCC\\include\\rw",
-                "d:\\keil5\\stm32zet6\\test\\ex09_ic_hal\\MDK-ARM",
-                "d:\\keil5\\stm32zet6\\test\\ex09_ic_hal\\Core\\Src",
-                "d:\\keil5\\stm32zet6\\test\\ex09_ic_hal\\Drivers\\STM32F1xx_HAL_Driver\\Src"
+                "d:\\keil5\\stm32zet6\\test\\ex10_led_time_hal\\MDK-ARM",
+                "d:\\keil5\\stm32zet6\\test\\ex10_led_time_hal\\Core\\Src",
+                "d:\\keil5\\stm32zet6\\test\\ex10_led_time_hal\\Drivers\\STM32F1xx_HAL_Driver\\Src"
             ],
             "defines": [
                 "USE_HAL_DRIVER",
