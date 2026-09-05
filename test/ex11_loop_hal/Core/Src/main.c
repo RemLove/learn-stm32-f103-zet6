@@ -55,15 +55,15 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint32_t now=0;
-uint32_t LED1_Counter = 0;
-uint32_t USART1_Counter = 0;
+uint32_t LED0_time=0;
+uint32_t LED1_time=0;
+uint32_t print_time=0;
 
-uint8_t Key_Flag=1;//°´¼ü±êÖ¾Î»
-uint8_t Key_last=1;//°´¼üÉÏÒ»´ÎµçÆ½
-uint32_t Key_time=0;//µçÆ½±ä»¯µÄÊ±¼ä´Á
+uint8_t key_stable=1;//çŠ¶æ€
+uint8_t key_last;//ä¸Šæ¬¡ä½Žç”µå¹³è¿˜æ˜¯é«˜ç”µå¹³
+uint32_t key_time;//æ—¶é—´æˆ³ï¼Œåˆ¤æ–­æ˜¯å¦æ—¶é—´åˆ°äº†æ¶ˆæŠ–
 
-void Tack_Key(void);
+void Key_Task(void);
 
 /* USER CODE END 0 */
 
@@ -99,8 +99,6 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
-
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -108,11 +106,18 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-    now=HAL_GetTick();
-    LED1_Twinkle();
-    USART1_Print();
-    Tack_Key();
-    
+    uint32_t now=HAL_GetTick();
+    if(now-LED1_time>=200)
+    {
+      HAL_GPIO_TogglePin(LED1_GPIO_Port,LED1_Pin);
+      LED1_time=now;
+    }
+    if(now-print_time>=1000)
+    {
+      printf("%lu\n",now);
+      print_time=now;
+    }
+    Key_Task();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -158,27 +163,27 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-void Tack_Key(void)
+
+
+void Key_Task(void)
 {
- uint8_t Key_now=HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_4);//¶ÁÈ¡°´¼üµçÆ½
- if(Key_now!=Key_last)//µçÆ½·¢Éú±ä»¯
+  uint8_t key_now=HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_4);//è¯»å½“å‰ç”µå¹³
+  if(key_now!=key_last)
   {
-    Key_last=Key_now;//
-    Key_time=HAL_GetTick();
+    key_last=key_now;
+    key_time=HAL_GetTick();
   }
-  
-  if((HAL_GetTick()-Key_time)>20)//Èç¹ûµçÆ½±ä»¯Ê±¼ä´óÓÚ20ms
+  if(HAL_GetTick()-key_time>=20)
   {
-   if(Key_now!=Key_Flag)//Èç¹ûµçÆ½ºÍ±êÖ¾Î»²»Ò»Ñù
-   {
-     Key_Flag=Key_now;//¸üÐÂ±êÖ¾Î»
-     if(Key_Flag==GPIO_PIN_RESET)//Èç¹û±êÖ¾Î»È·ÊµÊÇ°´ÏÂ×´Ì¬
-     {
-       //°´¼ü°´ÏÂÊÂ¼þ
-       HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_5);//·­×ªLEDµÆ
-       printf("°´¼ü°´ÏÂ\r\n");
-     }
-   }
+    if(key_now!=key_stable)
+    {
+      key_stable=key_now;
+      if(key_stable==0)
+      {
+        HAL_GPIO_TogglePin(LED0_GPIO_Port,LED0_Pin);
+        printf("key0 press!\n");
+      }
+    }
   }
 }
 /* USER CODE END 4 */
@@ -213,3 +218,4 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+

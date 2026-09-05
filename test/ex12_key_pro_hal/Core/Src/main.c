@@ -55,15 +55,20 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint32_t now=0;
-uint32_t LED1_Counter = 0;
-uint32_t USART1_Counter = 0;
+typedef enum
+{
+  S_IDLE=0,
+  S_DOWN,
+  S_LONG,
 
-uint8_t Key_Flag=1;//按键标志位
-uint8_t Key_last=1;//按键上一次电平
-uint32_t Key_time=0;//电平变化的时间戳
-
-void Tack_Key(void);
+}KeySatatuse;
+KeySatatuse Keystatus=S_IDLE;
+//消抖
+uint8_t Key_stable=1;//按键状态
+uint8_t Key_last=1;//上次电平
+uint32_t Key_time=0;//按键消抖时间戳
+uint32_t Key_down_time=0;//按键长计时时间戳
+void Key_Task(void);
 
 /* USER CODE END 0 */
 
@@ -99,8 +104,6 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
-
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -108,10 +111,6 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-    now=HAL_GetTick();
-    LED1_Twinkle();
-    USART1_Print();
-    Tack_Key();
     
     /* USER CODE BEGIN 3 */
   }
@@ -155,30 +154,55 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+
 }
 
 /* USER CODE BEGIN 4 */
-void Tack_Key(void)
+void Key_Task(void)
 {
- uint8_t Key_now=HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_4);//读取按键电平
- if(Key_now!=Key_last)//电平发生变化
+  //1.消抖
+  uint8_t Key_now=HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_4);//PE4
+  if(Key_now!=Key_last)
   {
-    Key_last=Key_now;//
+    Key_last=Key_now;
     Key_time=HAL_GetTick();
   }
-  
-  if((HAL_GetTick()-Key_time)>20)//如果电平变化时间大于20ms
+  if((HAL_GetTick()-Key_time)>10)//10ms消抖
   {
-   if(Key_now!=Key_Flag)//如果电平和标志位不一样
-   {
-     Key_Flag=Key_now;//更新标志位
-     if(Key_Flag==GPIO_PIN_RESET)//如果标志位确实是按下状态
-     {
-       //按键按下事件
-       HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_5);//翻转LED灯
-       printf("按键按下\r\n");
-     }
-   }
+    Key_stable=Key_now;
+  }
+  //2.按键状态机
+  switch (Keystatus)
+  {
+  case S_IDLE:
+    if(Key_stable==0)//按下
+    {
+      Keystatus=S_DOWN;
+      Key_down_time=HAL_GetTick();
+    }
+    break;
+    case S_DOWN:
+    if(Key_stable==1)//松开
+    {
+      Keystatus=S_IDLE;
+      HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_5);//LED0翻转
+      printf("短按\r\n");
+      //短按事件
+    }
+    else if((HAL_GetTick()-Key_down_time)>2000)//长按
+    {
+      Keystatus=S_LONG;
+      HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_5);//LED1翻转
+      printf("长按\r\n");
+      //长按事件
+    }
+    break;
+    case S_LONG:
+    if(Key_stable==1)//松开
+    {
+      Keystatus=S_IDLE;
+    }
+    break;
   }
 }
 /* USER CODE END 4 */

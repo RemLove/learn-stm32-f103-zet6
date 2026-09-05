@@ -55,15 +55,6 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint32_t now=0;
-uint32_t LED1_Counter = 0;
-uint32_t USART1_Counter = 0;
-
-uint8_t Key_Flag=1;//按键标志位
-uint8_t Key_last=1;//按键上一次电平
-uint32_t Key_time=0;//电平变化的时间戳
-
-void Tack_Key(void);
 
 /* USER CODE END 0 */
 
@@ -98,9 +89,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
-
-
+  HAL_UART_Receive_IT(&huart1,&rx_byte,1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -108,11 +97,14 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-    now=HAL_GetTick();
-    LED1_Twinkle();
-    USART1_Print();
-    Tack_Key();
-    
+    /* USER CODE BEGIN 3 */
+  uint8_t ch;
+  while(RB_Read(&rx_rb, &ch))
+  {
+    HAL_UART_Transmit(&huart1, &ch, 1, 100);
+  }
+/* USER CODE END 3 */
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -158,29 +150,7 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-void Tack_Key(void)
-{
- uint8_t Key_now=HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_4);//读取按键电平
- if(Key_now!=Key_last)//电平发生变化
-  {
-    Key_last=Key_now;//
-    Key_time=HAL_GetTick();
-  }
-  
-  if((HAL_GetTick()-Key_time)>20)//如果电平变化时间大于20ms
-  {
-   if(Key_now!=Key_Flag)//如果电平和标志位不一样
-   {
-     Key_Flag=Key_now;//更新标志位
-     if(Key_Flag==GPIO_PIN_RESET)//如果标志位确实是按下状态
-     {
-       //按键按下事件
-       HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_5);//翻转LED灯
-       printf("按键按下\r\n");
-     }
-   }
-  }
-}
+
 /* USER CODE END 4 */
 
 /**
