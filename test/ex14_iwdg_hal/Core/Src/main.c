@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "iwdg.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -55,26 +56,6 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint32_t LED0_time=0;
-uint32_t LED1_time=0;
-uint32_t print_time=0;
-
-uint8_t key_stable=1;//??
-uint8_t key_last;//??��??????????
-uint32_t key_time;//???????��?????????????
-
-typedef enum
-{
-  S_Idile,
-  S_Down,
-  S_Long,
-}S_Status;
-
-S_Status status;
-
-void Key_Task(void);
-
-void Key_Task01(void);
 
 /* USER CODE END 0 */
 
@@ -107,17 +88,38 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_IWDG_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  uint32_t LED1_time=0;
+  uint32_t Feed_time=0;
   /* USER CODE END 2 */
-
+  printf("BEGIN\r\n");
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
     /* USER CODE END WHILE */
-    Key_Task01();
+    //1.LED1 300ms反转一次
+    uint32_t now=HAL_GetTick();
+    if(now-LED1_time>=300)
+    {
+      LED1_time=now;
+      HAL_GPIO_TogglePin(LED1_GPIO_Port,LED1_Pin);
+    }
+    //2.300ms 喂一次狗
+    if(now-Feed_time>=300)
+    {
+      Feed_time=now;
+      HAL_IWDG_Refresh(&hiwdg);
+    }
+    //3.按住key，进入死循环，使程序卡死
+    if(HAL_GPIO_ReadPin(KEY1_GPIO_Port,KEY1_Pin)==GPIO_PIN_RESET)
+    {
+      HAL_Delay(20);
+      printf("diet\r\n");
+      while(1){}
+    }
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -135,10 +137,11 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
@@ -164,58 +167,6 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-
-void Key_Task(void)
-{
-  uint8_t key_now=HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_4);//????????
-  if(key_now!=key_last)
-  {
-    key_last=key_now;
-    key_time=HAL_GetTick();
-  }
-  if(HAL_GetTick()-key_time>=20)
-  {
-    if(key_now!=key_stable)
-    {
-      key_stable=key_now;
-    }
-  }
-}
-
-void Key_Task01(void)
-{
-  Key_Task();//????
-  switch (status)
-  {
-  case S_Idile:
-    if(key_stable==0)//???????
-    {
-      status=S_Down;
-      key_time=HAL_GetTick();
-    }
-    break;
-  case S_Down:
-    if(key_stable==1)//?????????
-    {
-      HAL_GPIO_TogglePin(LED0_GPIO_Port,LED0_Pin);
-      printf("short\n");
-      status=S_Idile;
-    }
-    else if(HAL_GetTick()-key_time>=2000)//???2s?????????
-    {
-      HAL_GPIO_TogglePin(LED1_GPIO_Port,LED1_Pin);
-      printf("long\n");
-      status=S_Long;
-    }
-    break;
-    case S_Long:
-      if(key_stable==1)
-      {
-        status=S_Idile;
-      }
-    break;
-  }
-}
 /* USER CODE END 4 */
 
 /**
@@ -248,4 +199,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-

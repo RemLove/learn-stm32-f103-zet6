@@ -55,26 +55,6 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint32_t LED0_time=0;
-uint32_t LED1_time=0;
-uint32_t print_time=0;
-
-uint8_t key_stable=1;//??
-uint8_t key_last;//??��??????????
-uint32_t key_time;//???????��?????????????
-
-typedef enum
-{
-  S_Idile,
-  S_Down,
-  S_Long,
-}S_Status;
-
-S_Status status;
-
-void Key_Task(void);
-
-void Key_Task01(void);
 
 /* USER CODE END 0 */
 
@@ -109,7 +89,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_UART_Receive_IT(&huart1,&rx_byte,1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -117,7 +97,12 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-    Key_Task01();
+    uint8_t ch;
+    while(Rx_Read(&rb_rx, &ch))   // 一次取完所有排队的数据
+    {
+    HAL_UART_Transmit(&huart1, &ch, 1, 100);  // 原样回显
+    }
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -164,58 +149,6 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-
-void Key_Task(void)
-{
-  uint8_t key_now=HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_4);//????????
-  if(key_now!=key_last)
-  {
-    key_last=key_now;
-    key_time=HAL_GetTick();
-  }
-  if(HAL_GetTick()-key_time>=20)
-  {
-    if(key_now!=key_stable)
-    {
-      key_stable=key_now;
-    }
-  }
-}
-
-void Key_Task01(void)
-{
-  Key_Task();//????
-  switch (status)
-  {
-  case S_Idile:
-    if(key_stable==0)//???????
-    {
-      status=S_Down;
-      key_time=HAL_GetTick();
-    }
-    break;
-  case S_Down:
-    if(key_stable==1)//?????????
-    {
-      HAL_GPIO_TogglePin(LED0_GPIO_Port,LED0_Pin);
-      printf("short\n");
-      status=S_Idile;
-    }
-    else if(HAL_GetTick()-key_time>=2000)//???2s?????????
-    {
-      HAL_GPIO_TogglePin(LED1_GPIO_Port,LED1_Pin);
-      printf("long\n");
-      status=S_Long;
-    }
-    break;
-    case S_Long:
-      if(key_stable==1)
-      {
-        status=S_Idile;
-      }
-    break;
-  }
-}
 /* USER CODE END 4 */
 
 /**
@@ -248,4 +181,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
