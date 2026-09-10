@@ -36,6 +36,7 @@ Listings/
 Objects/
 *.build_log.htm
 *.clean
+build_output.txt
 
 # Debug
 DebugConfig/
