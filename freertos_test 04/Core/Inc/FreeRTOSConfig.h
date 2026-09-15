@@ -66,54 +66,26 @@ to exclude the API function. */
 
 /* This is the raw value as per the Cortex-M3 NVIC.  Values can be 255
 (lowest) to 0 (1?) (highest). */
-//#define configKERNEL_INTERRUPT_PRIORITY 		255
+#define configKERNEL_INTERRUPT_PRIORITY 		255
 /* !!!! configMAX_SYSCALL_INTERRUPT_PRIORITY must not be set to zero !!!!
 See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
-//#define configMAX_SYSCALL_INTERRUPT_PRIORITY 	191 /* equivalent to 0xb0, or priority 11. */
+#define configMAX_SYSCALL_INTERRUPT_PRIORITY 	191 /* equivalent to 0xb0, or priority 11. */
 
 
 /* This is the value being used as per the ST library which permits 16
 priority values, 0 to 15.  This must correspond to the
 configKERNEL_INTERRUPT_PRIORITY setting.  Here 15 corresponds to the lowest
 NVIC value of 255. */
-//#define configLIBRARY_KERNEL_INTERRUPT_PRIORITY	15
+#define configLIBRARY_KERNEL_INTERRUPT_PRIORITY	15
 
-/*3. 中断嵌套行为相关配置 cm3内核:我们要求4个优先级位全部为抢占优先级位 
-    最高优先级是 0 
-    最低优先级是 15 
-*/ 
-/* 设置 RTOS 内核自身使用的中断优先级。 一般设置为最低优先级, 不至于屏蔽其他优先级程序*/ 
-#define configKERNEL_INTERRUPT_PRIORITY (15 << 4) 
-/* 设置了 调用中断安全的 FreeRTOS API 函数的最高中断优先级。 FreeRTOS 的管理的最高优先级 
-*/         
-#define configMAX_SYSCALL_INTERRUPT_PRIORITY  (5 << 4) 
-/* 同上. 仅用于新版移植。 这两者是等效的。 */   
-#define configMAX_API_CALL_INTERRUPT_PRIORITY   configMAX_SYSCALL_INTERRUPT_PRIORITY 
 
 
 #define xPortPendSVHandler  PendSV_Handler
 #define vPortSVCHandler     SVC_Handler
 #define INCLUDE_xTaskGetSchedulerState   1
 
-//启动挂起和恢复
-#define INCLUDE_vTaskSuspend                            1 
-#define INCLUDE_xResumeFromISR                          1 
-/* 开启跟踪task信息 */ 
-#define configUSE_TRACE_FACILITY   1 
-#define configUSE_STATS_FORMATTING_FUNCTIONS 1 
 
 
-/* 运行时间和任务状态统计相关定义 */ 
-#define configGENERATE_RUN_TIME_STATS    1      /* 1: 使能任务运行时间统
-计功能, 默认: 0 */ 
-#if configGENERATE_RUN_TIME_STATS 
-extern volatile unsigned long ulHighFrequencyTimerTicks; 
-#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS() 
-( ulHighFrequencyTimerTicks = 0UL ) 
-#define portGET_RUN_TIME_COUNTER_VALUE()    ulHighFrequencyTimerTicks 
-#endif 
-#define configUSE_TRACE_FACILITY               1                       
-#define configUSE_STATS_FORMATTING_FUNCTIONS   1  
 
 
 #endif /* FREERTOS_CONFIG_H */

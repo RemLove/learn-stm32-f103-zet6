@@ -4,6 +4,7 @@
 #include "freertos_demo.h"
 #include "stm32f1xx_hal.h"
 #include "usart.h"
+#include "semphr.h"
 //启动文件的配置
 #define TASK_STACK 128
 #define TASK_PRIORITY 1
@@ -16,9 +17,25 @@ void task_start(void*pv);
 TaskHandle_t task1_handle;
 void task1(void*pv);
 
+//任务2的配置
+#define TASK2_STACK 128
+#define TASK2_PRIORITY 3
+TaskHandle_t task2_handle;
+void task2(void*pv);
+
+QueueHandle_t sem;
 
 void FreeRtos_Start(void)
 {
+    vSemaphoreCreateBinary(sem);
+    if(sem!=NULL)
+    {
+        printf("creat success\r\n");
+    }
+    else
+    {
+        printf("creat fail\r\n");
+    }
     //1.创建一个启动函数
      xTaskCreate( (TaskFunction_t) task_start,
                              (char *)  "task_start", 
@@ -40,6 +57,12 @@ void task_start(void*pv)
                         (void *) NULL,
                         (UBaseType_t) TASK1_PRIORITY,
                         (TaskHandle_t *) &task1_handle );
+    xTaskCreate( (TaskFunction_t) task2,
+                        (char *)  "task2", 
+                        (configSTACK_DEPTH_TYPE) TASK2_STACK,
+                        (void *) NULL,
+                        (UBaseType_t) TASK2_PRIORITY,
+                        (TaskHandle_t *) &task2_handle );
 
     taskEXIT_CRITICAL();
     vTaskDelete(NULL);
@@ -47,27 +70,30 @@ void task_start(void*pv)
 }
 
 
-
+//LED0 500ms反转
 void task1(void*pv)
 {
-    UBaseType_t task_priority=0;
-    task_priority = uxTaskPriorityGet(task1_handle);
-    printf("task_priority:%d\r\n",task_priority);
-    vTaskPrioritySet(task1_handle,1);
-    task_priority = uxTaskPriorityGet(task1_handle);
-    printf("task_priority:%d\r\n",task_priority);
-    vTaskDelete(NULL);
+   while (1)
+   {
+    printf("task1 \r\n");
+    HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_5);
+    vTaskDelay(500);
+   }
+   
+   
+}
 
-    UBaseType_t task_number=0;
-    task_number = uxTaskGetNumberOfTasks();
-    printf("task_number:%d\r\n",task_number);
-
-    TaskStatus_t buffer[1];
-    uxTaskGetSystemState(buffer,1,NULL);
-    TaskStatus_t task_status[1];
-    vTaskGetInfo(task1_handle,task_status, pdTRUE,eInvalid);
-
-    
+//LED1 500ms反转
+void task2(void*pv)
+{
+    while (1)
+   {
+    printf("task2 \r\n");
+    HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_5);
+    vTaskDelay(500);
+   }
+   
+   
 }
 
 
