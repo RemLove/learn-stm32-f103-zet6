@@ -1,0 +1,21 @@
+*** Using Compiler 'V5.06 update 7 (build 960)', folder: 'D:\keil5\core\ARM\ARMCC\Bin'
+Build target 'OLCD_TEST'
+compiling main.c...
+..\Core\Inc\oled.h(13): warning:  #1295-D: Deprecated declaration OLED_Init - give arg types
+  void OLED_Init();
+..\Core\Inc\oled.h(14): warning:  #1295-D: Deprecated declaration OLED_DisPlay_On - give arg types
+  void OLED_DisPlay_On();
+..\Core\Inc\oled.h(15): warning:  #1295-D: Deprecated declaration OLED_DisPlay_Off - give arg types
+  void OLED_DisPlay_Off();
+..\Core\Inc\oled.h(17): warning:  #1295-D: Deprecated declaration OLED_NewFrame - give arg types
+  void OLED_NewFrame();
+..\Core\Inc\oled.h(18): warning:  #1295-D: Deprecated declaration OLED_ShowFrame - give arg types
+  void OLED_ShowFrame();
+..\Core\Inc\oled.h(35): warning:  #1-D: last line of file ends without a newline
+  #endif // __OLED_H__
+../Core/Src/main.c: 6 warnings, 0 errors
+linking...
+Program Size: Code=5000 RO-data=312 RW-data=20 ZI-data=2340  
+FromELF: creating hex file...
+"OLCD_TEST\OLCD_TEST.axf" - 0 Error(s), 6 Warning(s).
+Build Time Elapsed:  00:00:01

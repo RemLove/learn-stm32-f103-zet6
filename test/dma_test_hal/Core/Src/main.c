@@ -18,12 +18,13 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "freertos_demo.h"
+#include<string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,7 +56,11 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+  #define SIZE 256
 
+  uint16_t rx_size=0;
+  uint8_t buffer[SIZE]={0};
+volatile uint8_t flag=0;
 /* USER CODE END 0 */
 
 /**
@@ -87,11 +92,13 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  FreeRtos_Start();
-  
 
+  HAL_UART_Receive_DMA(&huart1, buffer, SIZE);
+
+  __HAL_UART_ENABLE_IT(&huart1,UART_IT_IDLE);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -99,7 +106,14 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+    if(flag)
+    {
+      flag=0;
+      uint8_t buffer1 [SIZE] = {0};
+      memcpy(buffer1,buffer,rx_size);
+      buffer1[rx_size]='\0';
+      printf("RX[%d]: %s\r\n", rx_size, buffer1);
+    }
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -147,28 +161,6 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
-
-/**
-  * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM7 interrupt took place, inside
-  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
-  * a global variable "uwTick" used as application time base.
-  * @param  htim : TIM handle
-  * @retval None
-  */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  /* USER CODE BEGIN Callback 0 */
-
-  /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM7)
-  {
-    HAL_IncTick();
-  }
-  /* USER CODE BEGIN Callback 1 */
-
-  /* USER CODE END Callback 1 */
-}
 
 /**
   * @brief  This function is executed in case of error occurrence.
