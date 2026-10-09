@@ -38,6 +38,8 @@ void SPI_Init(void)
     SPI2->CR1 &= ~SPI_CR1_LSBFIRST; //高位先行
     //2.7使能SPI
     SPI2->CR1 |= SPI_CR1_SPE;
+    //2.8片选空闲电平拉高（GPIO 复位后 ODR=0，CS 会是低电平，先置高）
+    CS_HIGH();
 }
 void SPI_Start(void)
 {

@@ -49,7 +49,7 @@
             <InvalidFlash>1</InvalidFlash>
           </TargetStatus>
           <OutputDirectory>.\Objects\</OutputDirectory>
-          <OutputName>led_register</OutputName>
+          <OutputName>43_ethernet__register</OutputName>
           <CreateExecutable>1</CreateExecutable>
           <CreateLib>0</CreateLib>
           <CreateHexFile>0</CreateHexFile>
@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define></Define>
               <Undefine></Undefine>
-              <IncludePath>D:\keil5\pack\ARM\CMSIS\5.9.0\CMSIS\Core\Include;.\Hardware\LED;.\Hardware\KEY;.\Hardware\USART;.\Hardware\I2C;.\Intertface\EEPROM;.\Hardware\SPI;.\Intertface\FLASH;.\43_ethernet__register\Code;.\43_ethernet__register\Start;.\Intertface\ETHERNET;.\Intertface\ETHERNET\W5500</IncludePath>
+              <IncludePath>D:\keil5\pack\ARM\CMSIS\5.9.0\CMSIS\Core\Include;.\Hardware\LED;.\Hardware\KEY;.\Hardware\USART;.\Hardware\I2C;.\Intertface\EEPROM;.\Hardware\SPI;.\Intertface\FLASH;.\43_ethernet__register\Code;.\43_ethernet__register\Start;.\Intertface\ETHERNET;.\Intertface\ETHERNET\W5500;.\App;.\httpServer</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -576,6 +576,61 @@
             </File>
           </Files>
         </Group>
+        <Group>
+          <GroupName>APP/TCP</GroupName>
+          <Files>
+            <File>
+              <FileName>TCP.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\App\TCP.c</FilePath>
+            </File>
+            <File>
+              <FileName>UDP.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\App\UDP.c</FilePath>
+            </File>
+            <File>
+              <FileName>web.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\App\web.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>APP/HTTP</GroupName>
+          <Files>
+            <File>
+              <FileName>httpParser.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\httpServer\httpParser.c</FilePath>
+            </File>
+            <File>
+              <FileName>httpParser.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\httpServer\httpParser.h</FilePath>
+            </File>
+            <File>
+              <FileName>httpServer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\httpServer\httpServer.c</FilePath>
+            </File>
+            <File>
+              <FileName>httpServer.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\httpServer\httpServer.h</FilePath>
+            </File>
+            <File>
+              <FileName>httpUtil.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\httpServer\httpUtil.c</FilePath>
+            </File>
+            <File>
+              <FileName>httpUtil.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\httpServer\httpUtil.h</FilePath>
+            </File>
+          </Files>
+        </Group>
       </Groups>
     </Target>
   </Targets>
@@ -589,7 +644,7 @@
   <LayerInfo>
     <Layers>
       <Layer>
-        <LayName>led_register</LayName>
+        <LayName>43_ethernet__register</LayName>
         <LayPrjMark>1</LayPrjMark>
       </Layer>
     </Layers>
