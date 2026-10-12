@@ -141,7 +141,12 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* USER CODE BEGIN USART2_MspInit 1 */
-
+    /* 单点接收方案要求 USART2 走中断：每收到一个字节立刻进中断搬进环形缓冲，
+       这样应用层永远不需要"专门腾出手来收"，也就不存在和 AT 命令抢 DR 的问题。
+       注意：CubeMX 的 .ioc 里没勾 USART2 的 NVIC，所以这段必须放在 USER CODE 区，
+             重新生成代码时不会被覆盖。 */
+    HAL_NVIC_SetPriority(USART2_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(USART2_IRQn);
   /* USER CODE END USART2_MspInit 1 */
   }
 }

@@ -28,7 +28,16 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+/* 接收一帧的落地缓冲，容量必须传给 WIFI_TCP_ReadData */
+uint8_t  buff[1024];
+/* 本帧数据长度（出参） */
+uint16_t size;
+/* 链路 id —— 多连接时决定往哪个客户端发 */
+uint8_t  id;
+/* 远端 IP：字符串，必须用 char[]，因为 %s / %[^\"] 取的是 char* */
+char     ip[16];
+/* 远端端口：要 16 位，用 %hu 读进来两个字节，写 uint8_t 会踩到相邻变量 */
+uint16_t port;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -88,9 +97,15 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
-  //MX_USART2_UART_Init();
+  /* USER CODE BEGIN USART2_Init_Hint */
+  /* 保持 CubeMX 默认写法：在这里初始化 USART2。
+     不要在 ESP32_Init() 里再调一次 —— 那行在自动生成区，
+     CubeMX 重新生成代码时会被恢复，会导致重复初始化。 */
+  /* USER CODE END USART2_Init_Hint */
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-  WIFI_Init(STA);
+  WIFI_Init(AP);
+  WIFI_TCP_ServertStart();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -98,6 +113,16 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+
+    /* 非阻塞：把环形缓冲里已到齐的帧取出来，没到齐就当场返回（不占时间） */
+    WIFI_TCP_ReadData(buff,sizeof(buff),&size,&id,ip,&port);
+
+    if(size>0)
+    {
+      printf("%d,%s:%d,%d,%.*s\n",id,ip,port,size,size,buff);
+      WIFI_TCP_SendData(id,buff,size);
+      size=0;
+    }
 
     /* USER CODE BEGIN 3 */
   }

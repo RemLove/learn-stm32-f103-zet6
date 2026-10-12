@@ -22,6 +22,7 @@
 #include "stm32f1xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "usart.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -199,5 +200,13 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /* USER CODE BEGIN 1 */
-
+/**
+  * @brief USART2 全局中断：ESP32 AT 口的单点接收入口
+  *        每收到一个字节进来一次，HAL 负责把数据搬进缓冲，
+  *        收满一块或检测到 IDLE 时回调 HAL_UARTEx_RxEventCallback()（在 esp32.c）
+  */
+void USART2_IRQHandler(void)
+{
+  HAL_UART_IRQHandler(&huart2);
+}
 /* USER CODE END 1 */
