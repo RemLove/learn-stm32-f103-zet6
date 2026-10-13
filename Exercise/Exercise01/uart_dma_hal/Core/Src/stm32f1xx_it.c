@@ -238,6 +238,7 @@ void USART1_IRQHandler(void)
       memcpy(rxLine,rxBuff,rxLen);
       rxReady=1;
     }
+    HAL_UART_Receive_DMA(&huart1,rxBuff,128);
   }
 
   /* USER CODE END USART1_IRQn 0 */

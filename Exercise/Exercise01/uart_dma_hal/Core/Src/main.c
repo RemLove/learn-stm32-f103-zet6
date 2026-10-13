@@ -19,12 +19,13 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "dma.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "shell.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -94,11 +95,14 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_USART1_UART_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   //1.开启串口dma接收
   HAL_UART_Receive_DMA(&huart1,rxBuff,128);
   //2.使能dile中断
   __HAL_UART_ENABLE_IT(&huart1,UART_IT_IDLE);
+  //开启pwm
+  HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -106,14 +110,13 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-    if(rxReady)
-    {
-      HAL_UART_Transmit(&huart1,rxLine,rxLen,1000);
-      rxReady=0;
-      //重新开启dma
-      HAL_UART_Receive_DMA(&huart1,rxBuff,128);
-    }
+
     /* USER CODE BEGIN 3 */
+    if (rxReady)
+    {
+      Parse_And_Execute((char *)rxLine);
+      rxReady = 0;
+    }
   }
   /* USER CODE END 3 */
 }
