@@ -36,7 +36,7 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+#define RX_BUF_SIZE 128
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

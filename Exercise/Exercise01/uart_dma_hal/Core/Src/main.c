@@ -57,11 +57,11 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-//定义缓冲区
-uint8_t rxBuff[128]={0};//dma直接搬到这里
-uint8_t rxLine[128]={0};//再中断中拷贝rxbuff到这里，cpu解析这个缓冲区
-uint16_t rxLen=0;//计算这一帧数据有多长
-uint8_t volatile rxReady=0;//判断是否一帧接收完成
+//定义缓冲区(全局变量统一 g_ 前缀 + 小写下划线)
+uint8_t  g_rx_buff[RX_BUF_SIZE] = {0};   //dma直接搬到这里
+uint8_t  g_rx_line[RX_BUF_SIZE] = {0};   //再中断中拷贝g_rx_buff到这里，cpu解析这个缓冲区
+uint16_t g_rx_len  = 0;                  //计算这一帧数据有多长
+uint8_t volatile g_rx_ready = 0;         //判断是否一帧接收完成
 /* USER CODE END 0 */
 
 /**
@@ -98,7 +98,7 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   //1.开启串口dma接收
-  HAL_UART_Receive_DMA(&huart1,rxBuff,128);
+  HAL_UART_Receive_DMA(&huart1,g_rx_buff,RX_BUF_SIZE);
   //2.使能dile中断
   __HAL_UART_ENABLE_IT(&huart1,UART_IT_IDLE);
   //开启pwm
@@ -112,10 +112,10 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    if (rxReady)
+    if (g_rx_ready)
     {
-      Parse_And_Execute((char *)rxLine);
-      rxReady = 0;
+      parse_and_execute((char *)g_rx_line);
+      g_rx_ready = 0;
     }
   }
   /* USER CODE END 3 */

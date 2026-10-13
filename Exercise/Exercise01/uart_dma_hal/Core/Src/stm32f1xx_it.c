@@ -53,11 +53,11 @@
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-//定义缓冲区
-extern uint8_t rxBuff[128];//dma直接搬到这里
-extern uint8_t rxLine[128];//再中断中拷贝rxbuff到这里，cpu解析这个缓冲区
-extern uint16_t rxLen;//计算这一帧数据有多长
-extern uint8_t volatile rxReady;//判断是否一帧接收完成
+//定义缓冲区(全局变量统一 g_ 前缀 + 小写下划线)
+extern uint8_t  g_rx_buff[RX_BUF_SIZE];  //dma直接搬到这里
+extern uint8_t  g_rx_line[RX_BUF_SIZE];  //再中断中拷贝g_rx_buff到这里，cpu解析这个缓冲区
+extern uint16_t g_rx_len;                //计算这一帧数据有多长
+extern uint8_t volatile g_rx_ready;      //判断是否一帧接收完成
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -229,16 +229,16 @@ void USART1_IRQHandler(void)
   if(__HAL_UART_GET_FLAG(&huart1,UART_FLAG_IDLE))
   {
     __HAL_UART_CLEAR_IDLEFLAG(&huart1);   // 内部就是读 SR + 读 DR
-
+    uint16_t len = RX_BUF_SIZE - __HAL_DMA_GET_COUNTER(huart1.hdmarx);
     HAL_UART_DMAStop(&huart1);
-    uint16_t len=128-__HAL_DMA_GET_COUNTER(huart1.hdmarx);
     if(len>0)
     {
-      rxLen=len;
-      memcpy(rxLine,rxBuff,rxLen);
-      rxReady=1;
+      g_rx_len=len;
+      memcpy(g_rx_line,g_rx_buff,g_rx_len);
+      if(len<RX_BUF_SIZE) g_rx_line[len]='\0';
+      g_rx_ready=1;
     }
-    HAL_UART_Receive_DMA(&huart1,rxBuff,128);
+    HAL_UART_Receive_DMA(&huart1,g_rx_buff,RX_BUF_SIZE);
   }
 
   /* USER CODE END USART1_IRQn 0 */
