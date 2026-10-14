@@ -24,6 +24,9 @@ JLink*
 *.htm
 *.dep
 *.plg
+# *.sct 是 uVision 编译时按 Target 内存布局自动生成的散列文件（ScatterFile 为空时）
+# 只有手工指定 --scatter 的项目才需要提交，这里统一忽略
+*.sct
 *.bak
 *.ddl
 *.ini

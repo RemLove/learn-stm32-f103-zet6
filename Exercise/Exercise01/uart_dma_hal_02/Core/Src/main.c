@@ -25,7 +25,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "shell.h"
+#include "uart_rx.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,11 +58,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-#define BUFF_MAX_SIZE 128
-extern uint8_t RxBuff[BUFF_MAX_SIZE];//dma搬运数据到这里
-extern uint8_t RxLine[BUFF_MAX_SIZE];//cpu处理这里的数据
-extern uint8_t RxReady;//判断是否接收数据完成
-extern uint8_t RxLen;//计算接收数据长度
+
 /* USER CODE END 0 */
 
 /**
@@ -114,8 +111,13 @@ int main(void)
     /* USER CODE BEGIN 3 */
     if(RxReady==1)
     {
+      parse_and_execute((char*)RxLine);
       RxReady=0;
-      HAL_UART_Transmit(&huart1,RxLine,RxLen,1000);
+    }
+    if(RxErr==1)
+    {
+      RxErr=0;
+      printf("uart dma fail!\r\n");
     }
   }
   /* USER CODE END 3 */

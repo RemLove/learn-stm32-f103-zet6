@@ -23,15 +23,12 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
+#include "uart_rx.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN TD */
-#define BUFF_MAX_SIZE 128
-extern uint8_t RxBuff[BUFF_MAX_SIZE];//dma搬运数据到这里
-extern uint8_t RxLine[BUFF_MAX_SIZE];//cpu处理这里的数据
-extern uint8_t RxReady;//判断是否接收数据完成
-extern uint8_t RxLen;//计算接收数据长度
+
 /* USER CODE END TD */
 
 /* Private define ------------------------------------------------------------*/
@@ -228,7 +225,7 @@ void USART1_IRQHandler(void)
   if(__HAL_UART_GET_FLAG(&huart1,UART_FLAG_IDLE))
   {
     //0.清除IDLE标志位
-    __HAL_UART_CLEAR_FLAG(&huart1,UART_FLAG_IDLE);
+    __HAL_UART_CLEAR_IDLEFLAG(&huart1);
     //1.计算数据长度 
     uint8_t len=BUFF_MAX_SIZE-__HAL_DMA_GET_COUNTER(huart1.hdmarx);
     //2.停止dma
@@ -237,12 +234,17 @@ void USART1_IRQHandler(void)
     {
       //3.拷贝
       RxLen=len;
-      strcpy((char*)RxLine,(char*)RxBuff);
+      memcpy((char*)RxLine,(char*)RxBuff,RxLen);//接收到的数据后面没有'\0'需要补上
+      if(RxLen<BUFF_MAX_SIZE) RxLine[RxLen]='\0';
+
       //4.标志位置1
       RxReady=1;
     }
     //5.再开uart dma接收
-    HAL_UART_Receive_DMA(&huart1,RxBuff,BUFF_MAX_SIZE);
+    if( HAL_UART_Receive_DMA(&huart1,RxBuff,BUFF_MAX_SIZE)!=HAL_OK)
+    {
+      RxErr = 1;//中断里只置标志，不阻塞打印
+    }
   }
   /* USER CODE END USART1_IRQn 0 */
   HAL_UART_IRQHandler(&huart1);
