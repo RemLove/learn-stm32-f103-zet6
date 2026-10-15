@@ -59,12 +59,22 @@ void MX_FSMC_Init(void)
   hsram1.Init.AsynchronousWait = FSMC_ASYNCHRONOUS_WAIT_DISABLE;
   hsram1.Init.WriteBurst = FSMC_WRITE_BURST_DISABLE;
   /* Timing */
-  Timing.AddressSetupTime = 15;
-  Timing.AddressHoldTime = 15;
+  /* 关键：这三个值必须与 40_fsmc__lcd_rigister 已验证正常的配置保持一致。
+     40 号用寄存器直写 FSMC_Bank1->BTCR[7] 的实际值是：
+       ADDSET = 0 / ADDHLD = 0 / DATAST = 71  (即 (71 << 8))
+     我之前误把 71 当成"脏数据"改成 5、再改成 15，反而全屏花屏——
+     DATAST=71 对应约 1us 的数据保持时间(手册要求 >=55ns)，
+     是这块屏在 72MHz HCLK 下能稳定工作的值，不是随手写的数。
+     位域宽度见 stm32f103xe.h FSMC_BTRx_*：
+       ADDSET[3:0] Pos=0 / ADDHLD[3:0] Pos=4 / DATAST[7:0] Pos=8
+     另外 40 号没配置 CLKDIV / DataLatency / BusTurnAround（保持复位值 0），
+     这里也一并对齐，AccessMode 保持 A（异步模式）不变。 */
+  Timing.AddressSetupTime = 0;
+  Timing.AddressHoldTime = 0;
   Timing.DataSetupTime = 71;
-  Timing.BusTurnAroundDuration = 15;
-  Timing.CLKDivision = 16;
-  Timing.DataLatency = 17;
+  Timing.BusTurnAroundDuration = 0;
+  Timing.CLKDivision = 1;
+  Timing.DataLatency = 2;
   Timing.AccessMode = FSMC_ACCESS_MODE_A;
   /* ExtTiming */
 
@@ -76,24 +86,29 @@ void MX_FSMC_Init(void)
   /** Disconnect NADV
   */
 
+  /* 40_fsmc__lcd_rigister（寄存器版，已验证显示正常）没有调用
+     __HAL_AFIO_FSMCNADV_DISCONNECTED()，这里一并注释掉，
+     做到与 40 号最大程度一致，排除任何可能的干扰。
+     （该宏只改AFIO->MAPR2 的 NADV 重映射位，对 16bit SRAM 模式本无影响，
+      复位默认即为断开；但既然40 号没做，这里也不做。）
   __HAL_AFIO_FSMCNADV_DISCONNECTED();
+  */
 
   /* USER CODE BEGIN FSMC_Init 2 */
 
   /* USER CODE END FSMC_Init 2 */
 }
 
-static uint32_t FSMC_Initialized = 0;
-
+/* 说明：原先这里用一个静态变量 FSMC_Initialized 做"只初始化一次"的守卫，
+   属于隐患：HAL_SRAM_DeInit() 会置位 DeInit 标志，此后若再次调用
+   HAL_SRAM_Init()，MspInit 会因该变量仍为1 而直接 return，导致 FSMC
+   外设处于"时钟已关但 GPIO 仍为 AF_PP"的半死状态。
+   HAL 自身的 MspInit 无此问题，因此这里恢复为CubeMX 原始写法。 */
 static void HAL_FSMC_MspInit(void){
   /* USER CODE BEGIN FSMC_MspInit 0 */
 
   /* USER CODE END FSMC_MspInit 0 */
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-  if (FSMC_Initialized) {
-    return;
-  }
-  FSMC_Initialized = 1;
 
   /* Peripheral clock enable */
   __HAL_RCC_FSMC_CLK_ENABLE();
@@ -160,17 +175,11 @@ void HAL_SRAM_MspInit(SRAM_HandleTypeDef* sramHandle){
   /* USER CODE END SRAM_MspInit 1 */
 }
 
-static uint32_t FSMC_DeInitialized = 0;
-
 static void HAL_FSMC_MspDeInit(void){
   /* USER CODE BEGIN FSMC_MspDeInit 0 */
 
   /* USER CODE END FSMC_MspDeInit 0 */
-  if (FSMC_DeInitialized) {
-    return;
-  }
-  FSMC_DeInitialized = 1;
-  /* Peripheral clock enable */
+  /* Peripheral clock disable */
   __HAL_RCC_FSMC_CLK_DISABLE();
 
   /** FSMC GPIO Configuration

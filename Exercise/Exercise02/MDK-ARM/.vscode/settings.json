@@ -1,4 +1,6 @@
 {
+  "C_Cpp.default.configurationProvider": "",
+  "C_Cpp.default.intelliSenseMode": "clang-arm",
   "C_Cpp_Runner.cCompilerPath": "gcc",
   "C_Cpp_Runner.cppCompilerPath": "g++",
   "C_Cpp_Runner.debuggerPath": "gdb",
@@ -38,17 +40,19 @@
   "C_Cpp_Runner.compilerArgs": [],
   "C_Cpp_Runner.linkerArgs": [],
   "C_Cpp_Runner.includePaths": [
-    "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Core\\Inc",
-    "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Drivers\\STM32F1xx_HAL_Driver\\Inc\\Legacy",
-    "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Drivers\\STM32F1xx_HAL_Driver\\Inc",
-    "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Drivers\\CMSIS\\Device\\ST\\STM32F1xx\\Include",
-    "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Drivers\\CMSIS\\Include",
-    "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Interface\\LCD",
+    "../Core/Inc",
+    "../Core/Src",
+    "../Drivers/STM32F1xx_HAL_Driver/Inc",
+    "../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy",
+    "../Drivers/STM32F1xx_HAL_Driver/Src",
+    "../Drivers/CMSIS/Device/ST/STM32F1xx/Include",
+    "../Drivers/CMSIS/Include",
+    "../Interface/KEY",
+    "../Interface/LCD",
+    "../Interface/Menu",
     "D:\\keil5\\core\\ARM\\ARMCC\\include",
     "D:\\keil5\\core\\ARM\\ARMCC\\include\\rw",
-    "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\MDK-ARM",
-    "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Core\\Src",
-    "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Drivers\\STM32F1xx_HAL_Driver\\Src"
+    "."
   ],
   "C_Cpp_Runner.includeSearch": [
     "*",

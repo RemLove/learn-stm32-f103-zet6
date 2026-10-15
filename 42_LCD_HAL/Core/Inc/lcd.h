@@ -22,8 +22,9 @@
 
 
 
-#include "stm32f10x.h"
-#include "delay.h"
+/* HAL 工程：头文件依赖走 stm32f1xx_hal.h（由 fsmc.h -> main.h 间接包含）。
+   原先这里 include 的是标准库的 stm32f10x.h + delay.h，
+   本工程是 HAL 架构，两者都不存在，延时统一用 HAL_Delay()。 */
 #include "fsmc.h"
 #include "LCD_Front.h"
 #include <math.h>
@@ -58,7 +59,7 @@ void LCD_WriteChinesChar(uint16_t x,uint16_t y,uint16_t high,uint16_t fcolor,uin
 
 void LCD_WritePicture(uint16_t x,uint16_t y);
 
-void LCD_DrowPoint(uint16_t x,uint16_t y,uint16_t w,uint16_t color);
+void LCD_DrawPoint(uint16_t x,uint16_t y,uint16_t w,uint16_t color);
 
 void LCD_DrawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2,uint16_t w, uint16_t color);
 //长方形

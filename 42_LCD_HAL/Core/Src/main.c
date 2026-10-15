@@ -24,7 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "lcd.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -91,7 +91,29 @@ int main(void)
   MX_FSMC_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+  /* ---- LCD 最小验证：严格对齐 40_fsmc__lcd_rigister 的 main.c 顺序与内容 ----
+     40 号验证正常的顺序是：
+         LCD_Init(); LCD_ReadId(); LCD_BGOn(); LCD_ClearAll(WHITE); 然后画图形
+     这里刻意保持完全一致，先确认"驱动层 + 时序"本身能不能正常显示，
+     把 main 层的干扰因素（额外延时、坐标改动）全部剔除。
+     确认能显示后，再逐步加回。*/
+  LCD_Init();
+  /* 降速实验期间主频只有 4MHz，LCD 上电稳定所需时间比 72MHz 下长得多，
+     这里额外多等一会儿，确保屏完全就绪。72MHz 稳定后可去掉这段。 */
+  HAL_Delay(500);
+  volatile uint32_t id = LCD_ReadId();
+  (void)id;
 
+  LCD_BGOn();
+  HAL_Delay(100);
+  LCD_ClearAll(WHITE);
+  HAL_Delay(200);
+
+  /* 以下图形坐标与 40 号 main.c 完全一致，便于逐条对照显示效果 */
+  LCD_DrawLine(100, 100, 200, 200, 2, RED);
+  LCD_DrawCFX(0, 0, 100, 100, 2, RED);
+  LCD_DrawCircle(100, 100, 50, 2, RED);
+  LCD_DrawCircle_Pro(150, 150, 50, 2, RED, RED);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -101,6 +123,8 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    /* 想验证屏幕不会"跑飞"，可以在此继续写显存，观察图形是否稳定 */
+    /* USER CODE END 3 */
   }
   /* USER CODE END 3 */
 }
@@ -117,13 +141,19 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  /* 【降速实验】先临时用 HSI + PLL_MUL2 = 8MHz（F1 的 PLLMUL 从 2 起，无 MUL1）。
+     目的：代码侧（时序数值/引脚/逻辑）已与 40 号对齐但仍花屏，
+     需要判断是"总线速度过快导致信号完整性问题"还是"代码逻辑问题"。
+     若 8MHz 下显示正常 → 改用 HSE，PLLMUL 逐级升 2/3/4/6/9 找出临界点。
+     若 8MHz 下依然花屏 → 彻底排除速度因素，去查 FPC 接触 / 屏模块本体。
+     验证完记得改回 HSE + PLL_MUL9 = 72MHz。 */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI_DIV2;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL2;   /* HSI 8MHz/2*2 = 8MHz */
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -138,7 +168,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
   {
     Error_Handler();
   }

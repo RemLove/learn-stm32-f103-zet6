@@ -3,20 +3,29 @@
 
 #define SRAM_BANK1_4 0X6C000000
 #define LCD_ADDR_CDM (uint16_t *)SRAM_BANK1_4
-#define LDC_ADDR_DATA (uint16_t *)(SRAM_BANK1_4 + (1 << 11))
+#define LCD_ADDR_DATA (uint16_t *)(SRAM_BANK1_4 + (1 << 11))
+
+/* 画圆用 π。原先硬编码 3.13 是 π 的粗略近似（误差约 0.37%），
+   会让圆首尾接不上一圈。这里给准确值。 */
+#define LCD_PI 3.1415926
+
 void LCD_Init(void)
 {
-    FSMC_Init();
+    /* 注意：FSMC 已由 main.c 的 MX_FSMC_Init() 初始化完毕，此处不再重复初始化。
+       原先这里调用的 FSMC_Init() 是 40 号寄存器工程的函数名，HAL 工程中不存在。 */
     LCD_Reset();     // 先复位
     LCD_RegConfig(); // 再写寄存器序列
 }
 
 void LCD_Reset(void)
 {
+    /* 复位时序：拉低 -> 等待 -> 拉高 -> 等待。
+       注意不能只写 HAL_Delay 就完事，PG15 的低电平脉冲本身就是复位信号，
+        gpio.c 里虽然把 PG15 初始置高了，但这里必须显式先拉低，否则屏不会复位。 */
     GPIOG->ODR &= ~GPIO_ODR_ODR15;
-    Delay_ms(100);
+    HAL_Delay(100);
     GPIOG->ODR |= GPIO_ODR_ODR15;
-    Delay_ms(100);
+    HAL_Delay(100);
 }
 
 void LCD_BGOn(void)
@@ -35,11 +44,11 @@ void LCD_RegConfig(void)
 
     /* 1. 软件复位 */
     LCD_WriteCmd(0x01);
-    Delay_ms(120);
+    HAL_Delay(120);
 
     /* 2. 退出睡眠 */
     LCD_WriteCmd(0x11);
-    Delay_ms(120);
+    HAL_Delay(120);
 
     /* 3. 电源控制 A */
     LCD_WriteCmd(0xCB);
@@ -138,7 +147,7 @@ void LCD_RegConfig(void)
 
     /* 15. 显示开 */
     LCD_WriteCmd(0x29);
-    Delay_ms(20);
+    HAL_Delay(20);
 }
 
 void LCD_WriteCmd(uint16_t cmd)
@@ -148,20 +157,22 @@ void LCD_WriteCmd(uint16_t cmd)
 
 void LCD_WriteData(uint16_t data)
 {
-    *LDC_ADDR_DATA = data;
+    *LCD_ADDR_DATA = data;
 }
 
 uint16_t LCD_ReadData(void)
 {
 
-    return *LDC_ADDR_DATA;
+    return *LCD_ADDR_DATA;
 }
 
 uint32_t LCD_ReadId(void)
 {
     uint32_t id = 0;
 
-    LCD_WriteCmd(0xD3); /* ILI9341 读 ID 命令 0xD3 */
+    /* 保持 40_fsmc__lcd_rigister 的原实现（那边同样调用本函数且显示正常），
+       不额外加 dummy/延时——之前怀疑的"读命令未收尾"并非真因。 */
+    LCD_WriteCmd(0xD3); /* ILI9341 Read ID4 命令 */
 
     LCD_ReadData();                       /* dummy read，丢弃 */
     id = (uint32_t)LCD_ReadData() << 24;  /* 制造商/参数 1 */
@@ -176,6 +187,14 @@ void LCD_SetArea(uint16_t x1, uint16_t y1, uint16_t w, uint16_t h)
 {
     uint16_t x2 = x1 + w - 1;
     uint16_t y2 = y1 + h - 1;
+
+    /* 边界钳位：ILI9341 的列/行地址寄存器越界后，Memory Write 的后续像素
+       写入行为不可预测（花屏/撕裂）。画圆、画线等函数可能算出超屏坐标，
+       在这里统一钳位，一处修好全局。 */
+    if (x1 >= LCD_W) x1 = LCD_W - 1;
+    if (y1 >= LCD_H) y1 = LCD_H - 1;
+    if (x2 >= LCD_W) x2 = LCD_W - 1;
+    if (y2 >= LCD_H) y2 = LCD_H - 1;
 
     LCD_WriteCmd(0x2A); /* 1. 列地址：起始列 → 结束列 */
     LCD_WriteData(x1 >> 8);
@@ -194,6 +213,8 @@ void LCD_SetArea(uint16_t x1, uint16_t y1, uint16_t w, uint16_t h)
 
 void LCD_ClearAll(uint16_t color)
 {
+    /* 保持整屏一次连写（40_fsmc__lcd_rigister 已验证这样能正常显示）。
+       之前改成"分行写"是多余的，只要 FSMC 时序对齐 40 号，长连写不会丢数据。 */
     uint32_t i;
     uint32_t total = (uint32_t)LCD_W * LCD_H;
 
@@ -337,32 +358,65 @@ void LCD_WritePicture(uint16_t x, uint16_t y)
     }
 }
 
-void LCD_DrowPoint(uint16_t x, uint16_t y, uint16_t w, uint16_t color)
+void LCD_DrawPoint(uint16_t x, uint16_t y, uint16_t w, uint16_t color)
 {
-    LCD_SetArea(x,y,w,w);
-    for (uint16_t  i = 0; i < w*w; i++)
+    LCD_SetArea(x, y, w, w);
+    /* 用 uint32_t：w*w 若在 uint16_t 域内运算，w>=256 会溢出回绕。 */
+    uint32_t total = (uint32_t)w * w;
+    for (uint32_t i = 0; i < total; i++)
     {
         LCD_WriteData(color);
     }
-    
 }
 
-void LCD_DrawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2,uint16_t w, uint16_t color)
+void LCD_DrawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t w, uint16_t color)
 {
-    //一条竖线斜率无穷大
-    if(x1==x2)
+    /* 竖直线：斜率无穷大，单独处理 */
+    if (x1 == x2)
     {
-        for (uint16_t y = y1; y < y2; y++)
+        if (y1 < y2)
+            for (uint16_t y = y1; y <= y2; y++)
+                LCD_DrawPoint(x1, y, w, color);
+        else
+            for (uint16_t y = y1; y >= y2; y--)
+                LCD_DrawPoint(x1, y, w, color);
+        return;
+    }
+
+    /* 水平线 */
+    if (y1 == y2)
+    {
+        if (x1 < x2)
+            for (uint16_t x = x1; x <= x2; x++)
+                LCD_DrawPoint(x, y1, w, color);
+        else
+            for (uint16_t x = x1; x >= x2; x--)
+                LCD_DrawPoint(x, y1, w, color);
+        return;
+    }
+
+    /* 必须先转double 再相减。
+       原写法 (y2-y1)/(x2-x1)*1.0 中，y2-y1 与 x2-x1 都先按 uint16_t
+       做整数减法，当 x2<x1（或 y2<y1）时下溢成 60000 多，斜率直接算废。
+       循环边界也改成 <= 且支持反向，保证端点一定画到。 */
+    double k = ((double)y2 - (double)y1) / ((double)x2 - (double)x1);
+    double b = (double)y1 - k * (double)x1;
+
+    if (x1 < x2)
+    {
+        for (uint16_t x = x1; x <= x2; x++)
         {
-            LCD_DrowPoint(x1,y,w,color);
+            uint16_t y = (uint16_t)(k * x + b);
+            LCD_DrawPoint(x, y, w, color);
         }
     }
-    double k=(y2-y1)/(x2-x1)*1.0;
-    double b=y1-k*x1;
-    for (uint16_t x = x1; x < x2; x++)
+    else
     {
-       uint16_t y=(uint16_t)(k*x+b);
-       LCD_DrowPoint(x,y,w,color);
+        for (uint16_t x = x1; x >= x2; x--)
+        {
+            uint16_t y = (uint16_t)(k * x + b);
+            LCD_DrawPoint(x, y, w, color);
+        }
     }
 }
 
@@ -380,26 +434,29 @@ void LCD_DrawCFX(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t w,
 
 void LCD_DrawCircle(uint16_t xCenter, uint16_t yCenter, uint16_t r, uint16_t w, uint16_t color)
 {
-    for (uint16_t theta = 0; theta < 360 ; theta++)
+    /* 用 LCD_PI 而非 3.13；cos/sin 返回 double，必须先转double 运算再显式
+       截断为整数，否则隐式转换会产生截断误差，圆画不圆。 */
+    for (uint16_t theta = 0; theta < 360; theta++)
     {
-        uint16_t x=xCenter+r*cos(3.13*theta/180);
-        uint16_t y=yCenter+r*sin(3.13*theta/180);
-        LCD_DrowPoint(x,y,w,color);
+        double rad = LCD_PI * (double)theta / 180.0;
+        uint16_t x = (uint16_t)((double)xCenter + (double)r * cos(rad));
+        uint16_t y = (uint16_t)((double)yCenter + (double)r * sin(rad));
+        LCD_DrawPoint(x, y, w, color);
     }
-    
 }
 
 void LCD_DrawCircle_Pro(uint16_t xCenter, uint16_t yCenter, uint16_t r, uint16_t w, uint16_t bcolor, uint16_t fcolor)
 {
+    /* 实心圆：逐圈填充，越界由 LCD_SetArea 统一钳位处理 */
     for (uint16_t i = 0; i <= r; i++)
     {
-         for (uint16_t theta = 0; theta < 360 ; theta++)
+        for (uint16_t theta = 0; theta < 360; theta++)
         {
-            uint16_t x=xCenter+i*cos(3.13*theta/180);
-            uint16_t y=yCenter+i*sin(3.13*theta/180);
-            LCD_DrowPoint(x,y,w,bcolor);
+            double rad = LCD_PI * (double)theta / 180.0;
+            uint16_t x = (uint16_t)((double)xCenter + (double)i * cos(rad));
+            uint16_t y = (uint16_t)((double)yCenter + (double)i * sin(rad));
+            LCD_DrawPoint(x, y, w, bcolor);
         }
     }
-    
 }
 

@@ -20,10 +20,6 @@
 #define BRRED 0XFC07 // 棕红色
 #define GRAY 0X8430  // 灰色
 
-
-
-#include "stm32f1xx_hal.h"
-
 #include "fsmc.h"
 #include "LCD_Front.h"
 #include <math.h>
