@@ -36,6 +36,7 @@ static void Led1_Off(void) { __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0);   
 static void Led2_On(void)   { HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET); }
 static void Led2_Off(void)  { HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);   }
 
+//-------------led--------------
 //定义顺序：被引用的必须先定义 所以需要从最深往外定义
 //第三层
 //1.LED1
@@ -52,7 +53,6 @@ static const menu_item_t LED2_item[]={
 };
 static const menu_page_t led2_page={"LED2",LED2_item,2,two_y,NULL,NULL,NULL};//led2_page
 //第二层
-//--------led---------
 static const menu_item_t LED_item[]={
     {"LED1",&led1_page,NULL},
     {"LED2",&led2_page,NULL}
@@ -62,14 +62,25 @@ static const menu_page_t LED_page={"LED",LED_item,2,two_y,NULL,NULL,NULL};//led_
 static void pwm_enter(void);
 static void pwm_draw(void);
 static void pwm_key(void);
+/* PWM 进度条的屏幕位置 */
+#define BAR_X   20      /* 左上角 x */
+#define BAR_Y   165     /* 左上角 y */
+#define BAR_W   200     /* 总宽 */
+#define BAR_H   20      /* 总高 */
 static const menu_page_t pwm_page={"pwm",NULL,0,NULL,pwm_enter,pwm_draw,pwm_key};
+//-------info---------
+static void info_draw(void);
+static const menu_page_t info_page={"info",NULL,0,NULL,NULL,info_draw,NULL};
+//-------TIME---------
+static void time_draw(void);
+static const menu_page_t time_page={"time",NULL,0,NULL,NULL,time_draw,NULL};
 
 //第一层
 static  menu_item_t main_items[] = {
     { "1.LED",   &LED_page,   NULL },
     { "2.PWM",   &pwm_page,   NULL },   /* 还没做，确定后无反应 */
-    { "3.TIME",  NULL,        NULL },
-    { "4.INFO",  NULL,        NULL },
+    { "3.TIME",  &time_page,  NULL },
+    { "4.INFO",  &info_page,  NULL },
 };
 static const menu_page_t main_page = { "Menu", main_items, 4, menu_y,NULL,NULL,NULL };//main_page
 
@@ -132,12 +143,6 @@ static void Menu_DrawPage(void)
     {
         Cursor_Set(cur_page->ys[cur_sel], RED);
     }
-
-    
-    if(cur_page->count > 0)
-    {
-        Cursor_Set(cur_page->ys[cur_sel], RED);
-    }
     if(cur_page->draw_extra != NULL)
     {
         cur_page->draw_extra();
@@ -189,6 +194,19 @@ void Menu_Init(void)
 
 void Menu_Scan(void)
 {
+    //用于实时刷新time
+    static uint32_t last_refresh = 0;
+
+    if(HAL_GetTick() - last_refresh >= 1000)
+    {
+        last_refresh = HAL_GetTick();
+
+        if(cur_page->draw_extra != NULL)
+        {
+            cur_page->draw_extra();
+        }
+    }
+    
     //需要判断是否是pwm模式
     if(cur_page->pwm_key!=NULL)
     {
@@ -196,6 +214,18 @@ void Menu_Scan(void)
         key_evt=KEY_NONE;
         return;
     }
+    //判断是否是info或者time 是的话 丢弃上下键
+    if(cur_page->count == 0)
+    {
+        if(key_evt == KEY_LONG)
+        {
+            Menu_Back();
+        }
+
+        key_evt = KEY_NONE;      /* 上下键、确定键一律丢弃 */
+        return;
+    }
+
     if(key_evt==KEY_UP||key_evt==KEY_DOWN)
     {
         Cursor_Move(cur_page->ys,&cur_sel,key_evt,cur_page->count);
@@ -239,6 +269,7 @@ static uint8_t pwm_edit=0;//这个是要编辑的值
 //进入pwm页面时需要把临时值拉回保存值
 static void pwm_enter(void)
 {
+    pwm_saved = (uint8_t)__HAL_TIM_GET_COMPARE(&htim3, TIM_CHANNEL_2);
     pwm_edit=pwm_saved;
 }
 //pwm额外画的 只画改变的数值就行
@@ -253,6 +284,17 @@ static void pwm_draw(void)
 
     LCD_WriteAsiciStr(20, 120, 16, WHITE, BLACK, (uint8_t *)buf);
 
+    //画进度条
+    //1.先画边框
+    LCD_DrawCFX(BAR_X,BAR_Y,BAR_X+BAR_W,BAR_Y+BAR_H,1,WHITE);
+    //2，清除内部
+    LCD_DrawFill(BAR_X + 1, BAR_Y + 1, BAR_W - 1, BAR_H - 1, BLACK);
+    //3.填充
+    uint32_t fill=(uint32_t)(pwm_edit*(BAR_W-1)/100);
+     if(fill > 0)
+    {
+        LCD_DrawFill(BAR_X + 1, BAR_Y + 1, fill, BAR_H - 1, GREEN);
+    }
     /* 提示行：告诉用户这两个键在当前页面是干什么的 */
     LCD_WriteAsiciStr(0, 290, 16, GRAY, BLACK, (uint8_t *)"OK=save  long=cancel");
     
@@ -283,4 +325,41 @@ static void pwm_key(void)
         break;
     }
 }
+//----------------------------------------i n f o 页 面 编 辑-----------------------------------------------------------------------------------
 
+static void info_draw(void)
+{
+    static uint32_t lcd_id = 0; 
+    char buf[24];
+     if(lcd_id == 0)                  /* 只在第一次读 */
+    {
+        lcd_id = LCD_ReadId();
+    }
+
+    sprintf(buf, "LCD ID = %#x", (unsigned)lcd_id);
+    LCD_WriteAsiciStr(0, 110, 16, WHITE, BLACK, (uint8_t *)buf);
+
+    sprintf(buf, "Tick = %lu", HAL_GetTick());
+    LCD_WriteAsiciStr(0, 140, 16, WHITE, BLACK, (uint8_t *)buf);
+}
+//----------------------------------------T I M E 页 面 编 辑-----------------------------------------------------------------------------------
+/* ---- TIME 页面 ---- */
+static void time_draw(void)
+{
+    char buf[24];
+
+    /* HAL_GetTick() 是开机毫秒数，除 1000 得到秒 */
+    uint32_t sec = HAL_GetTick() / 1000;
+
+    uint8_t hh = (uint8_t)((sec / 3600) % 100);   /* 时，超过 99 小时回绕 */
+    uint8_t mm = (uint8_t)((sec % 3600) / 60);    /* 分 */
+    uint8_t ss = (uint8_t)(sec % 60);             /* 秒 */
+
+    /* %02d = 至少两位，不足补 0，所以 5 秒显示 "05" */
+    sprintf(buf, "%02d:%02d:%02d", hh, mm, ss);
+
+    /* 24 号字，比菜单正文大一号，看着像时钟 */
+    LCD_WriteAsiciStr(20, 120, 24, WHITE, BLACK, (uint8_t *)buf);
+
+    LCD_WriteAsiciStr(0, 290, 16, GRAY, BLACK, (uint8_t *)"long OK = back");
+}

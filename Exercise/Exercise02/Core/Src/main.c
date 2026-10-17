@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 #include "fsmc.h"
@@ -93,17 +94,17 @@ int main(void)
   MX_GPIO_Init();
   MX_FSMC_Init();
   MX_USART1_UART_Init();
+  MX_TIM3_Init();
+  HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_2);
   /* USER CODE BEGIN 2 */
 	LCD_Init();
 
 	uint32_t id = LCD_ReadId();
 	printf("LCD ID = %#x\r\n", id);   // 正常应读到 0x934100（ILI9341）
 
-  MX_TIM3_Init();
-
   Menu_Init();
 
-  HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_2);
+ 
   
   /* USER CODE END 2 */
 
@@ -112,6 +113,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+
     /* USER CODE BEGIN 3 */
     Key_Scan();
     Menu_Scan();

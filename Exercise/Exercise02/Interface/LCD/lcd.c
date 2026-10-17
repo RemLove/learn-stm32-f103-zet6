@@ -403,3 +403,13 @@ void LCD_DrawCircle_Pro(uint16_t xCenter, uint16_t yCenter, uint16_t r, uint16_t
     
 }
 
+void LCD_DrawFill(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color)
+{
+    if(w==0||h==0) return ;
+    uint32_t total=(uint32_t)(w*h);
+    LCD_SetArea(x,y,w,h);
+    for (uint32_t i = 0; i < total; i++)
+    {
+        LCD_WriteData(color);
+    }
+}

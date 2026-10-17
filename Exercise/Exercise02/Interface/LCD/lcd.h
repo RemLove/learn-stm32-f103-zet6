@@ -63,5 +63,6 @@ void LCD_DrawCFX(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2,uint16_t w, 
 void LCD_DrawCircle(uint16_t xCenter,uint16_t yCenter ,uint16_t r,uint16_t w , uint16_t color);
 //实心圆
 void LCD_DrawCircle_Pro(uint16_t xCenter,uint16_t yCenter ,uint16_t r,uint16_t w , uint16_t color,uint16_t fcolor);
-
+//画实心的矩形
+void LCD_DrawFill(uint16_t x, uint16_t y, uint16_t w, uint16_t h,uint16_t color);
 #endif
