@@ -60,9 +60,9 @@ void MX_FSMC_Init(void)
   hsram1.Init.WriteBurst = FSMC_WRITE_BURST_DISABLE;
   /* Timing */
   Timing.AddressSetupTime = 2;
-  Timing.AddressHoldTime = 15;
+  Timing.AddressHoldTime = 0;
   Timing.DataSetupTime = 3;
-  Timing.BusTurnAroundDuration = 15;
+  Timing.BusTurnAroundDuration = 0;
   Timing.CLKDivision = 16;
   Timing.DataLatency = 17;
   Timing.AccessMode = FSMC_ACCESS_MODE_A;

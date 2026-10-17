@@ -160,6 +160,7 @@ static void Menu_Go(const menu_page_t *p)
         sel_stack[depth]=cur_sel;
         depth++;
     }
+    else {return;}
     cur_page=p;
     cur_sel=0;
 
@@ -293,8 +294,9 @@ static void pwm_draw(void)
     uint32_t fill=(uint32_t)(pwm_edit*(BAR_W-1)/100);
      if(fill > 0)
     {
-        LCD_DrawFill(BAR_X + 1, BAR_Y + 1, fill, BAR_H - 1, GREEN);
+        LCD_DrawFill(BAR_X + 1, BAR_Y + 1, (uint16_t)fill, BAR_H - 1, GREEN);
     }
+    
     /* 提示行：告诉用户这两个键在当前页面是干什么的 */
     LCD_WriteAsiciStr(0, 290, 16, GRAY, BLACK, (uint8_t *)"OK=save  long=cancel");
     
