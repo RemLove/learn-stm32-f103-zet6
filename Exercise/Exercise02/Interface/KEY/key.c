@@ -1,108 +1,211 @@
 #include "key.h"
 
-volatile uint8_t keyUp_flag=0;//判断keyUp是否按下的标志
-volatile uint8_t key0_flag=0;//判断key0是否按下的标志
-volatile uint8_t key1_flag=0;//判断key1是否按下的标志
+volatile Key_evt_t key_evt=KEY_NONE;
 
-static uint8_t key0_stable = GPIO_PIN_SET;  // 记录消抖后的稳定电平
-static uint8_t key0_last=GPIO_PIN_SET;//默认是高电平 
-uint32_t key0_lasttime=0;
-
-static uint8_t key1_stable = GPIO_PIN_SET;  // 记录消抖后的稳定电平
-static uint8_t key1_last=GPIO_PIN_SET;//默认是高电平 
-uint32_t key1_lasttime=0;
-
-static uint8_t keyUp_stable = GPIO_PIN_RESET;  // 记录消抖后的稳定电平
-static uint8_t keyUp_last=GPIO_PIN_RESET;//默认是低电平 
-uint32_t keyUp_lasttime=0;
-
-
-static void key0_scan(void);
-static void key1_scan(void);
-static void keyUp_scan(void);
-
+static void Key0_Scan(void);
+static void Key1_Scan(void);
+static void KeyUp_Scan(void);
 
 void Key_Scan(void)
 {
-  key0_scan();
-  key1_scan();
-  keyUp_scan();
+    KeyUp_Scan();
+    Key1_Scan();
+    Key0_Scan();
 }
 
-static void key0_scan(void)
+
+
+typedef enum
 {
-    //状态机消抖
-    //1.看电平是否改变
-    uint8_t key0_now=HAL_GPIO_ReadPin(KEY0_GPIO_Port,KEY0_Pin);
-    if(key0_last!=key0_now)//如果电平改变
+    KEYUP_IDLE=0,
+    KEYUP_DEBOUNCE,
+    KEYUP_DOWN,
+    KEYUP_LONG
+}KeyUp_State_t;
+static void KeyUp_Scan(void)
+{
+    static KeyUp_State_t KeyUp_State=KEYUP_IDLE;//KeyUp的状态标志
+    static uint32_t KeyUp_chgtime=0;
+    uint8_t down=(HAL_GPIO_ReadPin(KEY_UP_GPIO_Port,KEY_UP_Pin)==GPIO_PIN_SET);
+    //uint8_t KeyUp_now=HAL_GPIO_ReadPin(KEY_UP_GPIO_Port,KEY_UP_Pin);
+    switch (KeyUp_State)
     {
-        //记录时间和更新电平
-        key0_lasttime=HAL_GetTick();
-        key0_last=key0_now;
-    }
-    if(HAL_GetTick()-key0_lasttime>50)//如果50ms了没有改变
-    {
-        //判断现在电平和稳定电平
-        if(key0_now!=key0_stable)//如果不相等 发生改变了,放在长按触发
+        case KEYUP_IDLE:
+        if(down)//如果变化
         {
-            key0_stable=key0_now;
-            if(key0_stable==GPIO_PIN_RESET)
-            {
-                key0_flag=1;
-            }
+            KeyUp_chgtime=HAL_GetTick();//记下当前时间
+            KeyUp_State=KEYUP_DEBOUNCE;
         }
+        break;
+        case KEYUP_DEBOUNCE:
+        if(HAL_GetTick()-KeyUp_chgtime>50)
+        {
+            KeyUp_chgtime=HAL_GetTick();//更新时间
+            KeyUp_State=KEYUP_DOWN;
+        }
+        else if(!down)//如果弹回去了 是抖动
+        {
+            KeyUp_State=KEYUP_IDLE;
+        }
+        break;
+        case KEYUP_DOWN:
+        if(HAL_GetTick()-KeyUp_chgtime>1000)//如果大于1s进入长按
+        {
+            key_evt=KEY_UP;
+            //printf("keyup long\r\n");
+            KeyUp_chgtime=HAL_GetTick();//更新一次时间
+            KeyUp_State=KEYUP_LONG;
+        }
+        else if(!down)//如果先1s 松手 短按
+        {
+            //printf("keyup down\r\n");
+            key_evt=KEY_UP;
+            KeyUp_State=KEYUP_IDLE;
+        }
+        break;
+        case KEYUP_LONG:
+        if(!down)//如果松手
+        {
+            KeyUp_State=KEYUP_IDLE;
+        }
+        else if(HAL_GetTick()-KeyUp_chgtime>500)//再来判断一次长按
+        {
+            key_evt=KEY_UP;
+            //printf("keyup long\r\n");
+            KeyUp_chgtime=HAL_GetTick();
+        }
+        break;
+    default:
+        break;
     }
 }
 
-static void key1_scan(void)
+typedef enum
 {
-    //状态机消抖
-    //1.判断是否电平发生改变
-    uint8_t key1_now=HAL_GPIO_ReadPin(KEY1_GPIO_Port,KEY1_Pin);
-    if(key1_last!=key1_now)//电平发生改变
+    KEY0_IDLE=0,
+    KEY0_DEBOUNCE,
+    KEY0_DOWN,
+    KEY0_LONG
+}Key0_State_t;
+static void Key0_Scan(void)
+{
+    static Key0_State_t Key0_State=KEY0_IDLE;//KeyUp的状态标志
+    static uint32_t Key0_chgtime=0;
+    uint8_t down=(HAL_GPIO_ReadPin(KEY0_GPIO_Port,KEY0_Pin)==GPIO_PIN_RESET);
+    //uint8_t KeyUp_now=HAL_GPIO_ReadPin(KEY_UP_GPIO_Port,KEY_UP_Pin);
+    switch (Key0_State)
     {
-        //更新电平记录时间
-        key1_lasttime=HAL_GetTick();
-        key1_last=key1_now;
-    }
-    //2.判断稳定时间是否>50ms
-    if(HAL_GetTick()-key1_lasttime>50)
-    {
-        //3.如果稳定 看看现在电平和稳定电平是否相同
-        if(key1_now!=key1_stable)//防止长按的
+        case KEY0_IDLE:
+        if(down)//如果变化
         {
-            key1_stable=key1_now;
-            if(key1_stable==GPIO_PIN_RESET)
-            {
-                key1_flag=1;
-            }
+            Key0_chgtime=HAL_GetTick();//记下当前时间
+            Key0_State=KEY0_DEBOUNCE;
         }
-        //如果现在电平和稳定电平相同  nothing
+        break;
+        case KEY0_DEBOUNCE:
+        if(HAL_GetTick()-Key0_chgtime>50)
+        {
+            Key0_chgtime=HAL_GetTick();//更新时间
+            Key0_State=KEY0_DOWN;
+        }
+        else if(!down)//如果弹回去了 是抖动
+        {
+            Key0_State=KEY0_IDLE;
+        }
+        break;
+        case KEY0_DOWN:
+        if(HAL_GetTick()-Key0_chgtime>1000)//如果大于1s进入长按
+        {
+            key_evt=KEY_LONG;
+            //printf("key0 long\r\n");
+            Key0_chgtime=HAL_GetTick();//更新一次时间
+            Key0_State=KEY0_LONG;
+        }
+        else if(!down)//如果先1s 松手 短按
+        {
+            //printf("key0 down\r\n");
+            key_evt=KEY_SHORT;
+            Key0_State=KEY0_IDLE;
+        }
+        break;
+        case KEY0_LONG:
+        if(!down)//如果松手
+        {
+            Key0_State=KEY0_IDLE;
+        }
+        else if(HAL_GetTick()-Key0_chgtime>500)//再来判断一次长按
+        {
+            key_evt=KEY_LONG;
+            //printf("key0 long\r\n");
+            Key0_chgtime=HAL_GetTick();
+        }
+        break;
+    default:
+        break;
     }
 }
-static void keyUp_scan(void)
+
+typedef enum
 {
-    //状态机消抖
-    //1.判断是否电平发生改变
-    uint8_t keyUp_now=HAL_GPIO_ReadPin(KEY_UP_GPIO_Port,KEY_UP_Pin);
-    if(keyUp_last!=keyUp_now)//电平发生改变
+    KEY1_IDLE=0,
+    KEY1_DEBOUNCE,
+    KEY1_DOWN,
+    KEY1_LONG
+}Key1_State_t;
+static void Key1_Scan(void)
+{
+    static Key1_State_t Key1_State=KEY1_IDLE;//KeyUp的状态标志
+    static uint32_t Key1_chgtime=0;
+    uint8_t down=(HAL_GPIO_ReadPin(KEY1_GPIO_Port,KEY1_Pin)==GPIO_PIN_RESET);
+    //uint8_t KeyUp_now=HAL_GPIO_ReadPin(KEY_UP_GPIO_Port,KEY_UP_Pin);
+    switch (Key1_State)
     {
-        //更新电平记录时间
-        keyUp_lasttime=HAL_GetTick();
-        keyUp_last=keyUp_now;
-    }
-    //2.判断稳定时间是否>50ms
-    if(HAL_GetTick()-keyUp_lasttime>50)
-    {
-        //3.如果稳定 看看现在电平和稳定电平是否相同
-        if(keyUp_now!=keyUp_stable)//防止长按的
+        case KEY1_IDLE:
+        if(down)//如果变化
         {
-            keyUp_stable=keyUp_now;
-            if(keyUp_stable==GPIO_PIN_SET)
-            {
-                keyUp_flag=1;
-            }
+            Key1_chgtime=HAL_GetTick();//记下当前时间
+            Key1_State=KEY1_DEBOUNCE;
         }
-        //如果现在电平和稳定电平相同  nothing
+        break;
+        case KEY1_DEBOUNCE:
+        if(HAL_GetTick()-Key1_chgtime>50)
+        {
+            Key1_chgtime=HAL_GetTick();//更新时间
+            Key1_State=KEY1_DOWN;
+        }
+        else if(!down)//如果弹回去了 是抖动
+        {
+            Key1_State=KEY1_IDLE;
+        }
+        break;
+        case KEY1_DOWN:
+        if(HAL_GetTick()-Key1_chgtime>1000)//如果大于1s进入长按
+        {
+            key_evt=KEY_DOWN;
+            //printf("key1 long\r\n");
+            Key1_chgtime=HAL_GetTick();//更新一次时间
+            Key1_State=KEY1_LONG;
+        }
+        else if(!down)//如果先1s 松手 短按
+        {
+            //printf("key1 down\r\n");
+            key_evt=KEY_DOWN;
+            Key1_State=KEY1_IDLE;
+        }
+        break;
+        case KEY1_LONG:
+        if(!down)//如果松手
+        {
+            Key1_State=KEY1_IDLE;
+        }
+        else if(HAL_GetTick()-Key1_chgtime>500)//再来判断一次长按
+        {
+            key_evt=KEY_DOWN;
+            //printf("key1 long\r\n");
+            Key1_chgtime=HAL_GetTick();
+        }
+        break;
+    default:
+        break;
     }
 }
