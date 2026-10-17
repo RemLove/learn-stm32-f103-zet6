@@ -22,11 +22,17 @@ struct menu_page
     const menu_item_t *items;   //相当于文件夹
     uint8_t            count;   /* 有几行 */
     const uint16_t    *ys;      /* 每行在屏幕上的 y 坐标 */
+
+    //------可选钩子---------
+    void(*on_enter)(void);  //每次进入pwm需要现在pwm的原先值
+    void(*draw_extra)(void);//需要额外画出pwm值
+    void(*pwm_key)(void);   //pwm是编辑模式，上下键将变成+1 和-1键 短确定是确定pwm值，长按是取消pwm值
 };
 
 //LED 灯的亮灭
-static void Led1_On(void)   { HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_RESET); }
-static void Led1_Off(void)  { HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_SET);   }
+static void Led1_On(void)  { __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 100); }  /* 100% 最亮 */
+static void Led1_Off(void) { __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 0);   }  /* 0% 灭 */
+
 static void Led2_On(void)   { HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET); }
 static void Led2_Off(void)  { HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);   }
 
@@ -37,28 +43,35 @@ static const menu_item_t LED1_item[]={
     {"on",NULL,Led1_On},
     {"off",NULL,Led1_Off}
 };
-static const menu_page_t led1_page={"LED1",LED1_item,2,two_y};
+static const menu_page_t led1_page={"LED1",LED1_item,2,two_y,NULL,NULL,NULL};//led1_page
 
 //2.LED2
 static const menu_item_t LED2_item[]={
     {"on",NULL,Led2_On},
     {"off",NULL,Led2_Off}
 };
-static const menu_page_t led2_page={"LED2",LED2_item,2,two_y};
+static const menu_page_t led2_page={"LED2",LED2_item,2,two_y,NULL,NULL,NULL};//led2_page
 //第二层
+//--------led---------
 static const menu_item_t LED_item[]={
     {"LED1",&led1_page,NULL},
     {"LED2",&led2_page,NULL}
 };
-static const menu_page_t LED_page={"LED",LED_item,2,two_y};
+static const menu_page_t LED_page={"LED",LED_item,2,two_y,NULL,NULL,NULL};//led_page
+//-------pwm---------
+static void pwm_enter(void);
+static void pwm_draw(void);
+static void pwm_key(void);
+static const menu_page_t pwm_page={"pwm",NULL,0,NULL,pwm_enter,pwm_draw,pwm_key};
+
 //第一层
-static const menu_item_t main_items[] = {
+static  menu_item_t main_items[] = {
     { "1.LED",   &LED_page,   NULL },
-    { "2.PWM",   NULL,        NULL },   /* 还没做，确定后无反应 */
+    { "2.PWM",   &pwm_page,   NULL },   /* 还没做，确定后无反应 */
     { "3.TIME",  NULL,        NULL },
     { "4.INFO",  NULL,        NULL },
 };
-static const  menu_page_t main_page = { "Menu", main_items, 4, menu_y };
+static const menu_page_t main_page = { "Menu", main_items, 4, menu_y,NULL,NULL,NULL };//main_page
 
 
 //运行时栈来记录
@@ -119,6 +132,16 @@ static void Menu_DrawPage(void)
     {
         Cursor_Set(cur_page->ys[cur_sel], RED);
     }
+
+    
+    if(cur_page->count > 0)
+    {
+        Cursor_Set(cur_page->ys[cur_sel], RED);
+    }
+    if(cur_page->draw_extra != NULL)
+    {
+        cur_page->draw_extra();
+    }
 }
 
 //进入子文件夹 先压入栈 再切换
@@ -134,6 +157,10 @@ static void Menu_Go(const menu_page_t *p)
     }
     cur_page=p;
     cur_sel=0;
+
+    //如果是要进入pwm则需要现在pwm的值
+    if(cur_page->on_enter!=NULL) cur_page->on_enter();
+
     Menu_DrawPage();
 }
 
@@ -162,6 +189,13 @@ void Menu_Init(void)
 
 void Menu_Scan(void)
 {
+    //需要判断是否是pwm模式
+    if(cur_page->pwm_key!=NULL)
+    {
+        cur_page->pwm_key();
+        key_evt=KEY_NONE;
+        return;
+    }
     if(key_evt==KEY_UP||key_evt==KEY_DOWN)
     {
         Cursor_Move(cur_page->ys,&cur_sel,key_evt,cur_page->count);
@@ -187,6 +221,7 @@ void Menu_Scan(void)
         }
     }
         break;
+        
     case KEY_LONG:
         key_evt=KEY_NONE;
         Menu_Back(); 
@@ -196,3 +231,56 @@ void Menu_Scan(void)
         break;
     }
 }
+//----------------------------------------P W M 页 面 编 辑-----------------------------------------------------------------------------------
+#define PWM_MAX 100 //pwm最大值
+
+static uint8_t pwm_saved=0;//默认是0，这个是已经保存的值
+static uint8_t pwm_edit=0;//这个是要编辑的值
+//进入pwm页面时需要把临时值拉回保存值
+static void pwm_enter(void)
+{
+    pwm_edit=pwm_saved;
+}
+//pwm额外画的 只画改变的数值就行
+static void pwm_draw(void)
+{
+    char buf[24];          /* 缓冲区，够放 "duty = 100%" 就行 */
+
+    /* sprintf 把数字转成字符串。%3d 表示至少占 3 个字符宽度，
+       这样 5 会显示成 "  5"，100 显示成 "100"，
+       数字变化时不会因为位数变化导致后面内容左右跳 */
+    sprintf(buf, "duty = %3d%%", pwm_edit);   /* %% 表示输出一个 % 字符 */
+
+    LCD_WriteAsiciStr(20, 120, 16, WHITE, BLACK, (uint8_t *)buf);
+
+    /* 提示行：告诉用户这两个键在当前页面是干什么的 */
+    LCD_WriteAsiciStr(0, 290, 16, GRAY, BLACK, (uint8_t *)"OK=save  long=cancel");
+    
+}
+//pwm接管按键
+static void pwm_key(void)
+{
+    switch (key_evt)
+    {
+    case KEY_UP ://计数+1
+        if(pwm_edit<PWM_MAX) pwm_edit++;
+        pwm_draw();
+        break;
+    case KEY_DOWN://计数-1
+        if(pwm_edit>0) pwm_edit--;
+        pwm_draw();
+        break;
+    case KEY_SHORT:
+        pwm_saved=pwm_edit;
+        __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_2,pwm_saved);
+        Menu_Back();
+        break;
+    case KEY_LONG:                    /* 取消：丢弃临时值，硬件不动 */
+        pwm_edit = pwm_saved;
+        Menu_Back();
+        break;
+    default:
+        break;
+    }
+}
+

@@ -5,6 +5,7 @@
 #include "LCD_Front.h"
 #include "key.h"
 #include "usart.h"
+#include "tim.h"
 
 //更新光标
 void Menu_Scan(void);
