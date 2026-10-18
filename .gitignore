@@ -39,8 +39,8 @@ Listings/
 Objects/
 *.build_log.htm
 *.clean
-build_output.txt
-build_check.txt
+# UV4.exe -o 输出的命令行编译日志（build_check.txt / build_out.txt 等）
+build_*.txt
 
 # Debug
 DebugConfig/

@@ -1,0 +1,294 @@
+==============================================================================
+ 题 3 - 第二步：擦除 / 写入 / 读取（自己敲的参考稿，不是编译文件）
+ 板子：正点原子精英 STM32F103ZET6   板载 25Q128（本板是诺存 NM25Q128，16MB）
+ 工程：Exercise03/flash
+ 说明：_ 前缀 + .txt，Keil 不会碰它。照着敲，别直接整段复制。
+==============================================================================
+
+
+【0】这一步要拿到什么
+
+ 串口打印出：
+
+   after erase: FF FF FF FF ...   （擦除真的发生了）
+   read back : 10 11 12 ... 1F    （写进去的东西读回来了）
+   PASS: 16/16 bytes match        （逐字节一致）
+
+ 第一步你已经能读 ID 了（0x522118 = 诺存）。这一步学会"改"数据：
+ 擦、写、读三条路都通，黑匣子才有地基。
+
+
+【1】先想明白一个反直觉的事实
+
+ Flash 的写入规则和 EEPROM 完全相反：
+
+   写  = 只能把 1 变 0，永远不能把 0 变 1
+   擦  = 整块变回 1（0xFF）
+
+ 所以流程永远是：先擦（变全 FF）→ 再写（把该变的 bit 变 0）。
+ 你只想改 16 个字节，也得先擦掉整整 4KB（一个扇区）。这就是 Flash 的代价，
+ 也是第三步"黑匣子"最费脑子的地方。
+
+
+【2】这一步用到的 5 条指令（先记下来）
+
+  指令  名称         作用
+  ----  -----------  ------------------------------------------
+  0x06  写使能       每次擦/写之前必须发，WEL 位一次性
+  0x05  读状态寄存器  读 BUSY 位，擦/写时它一直是 1
+  0x20  扇区擦除      擦 4KB，地址要 4KB 对齐
+  0x02  页编程        写，一次最多 256 字节，不能跨页
+  0x03  读数据        连续读，地址自动递增，无长度限制
+
+
+【3】代码（按顺序敲）
+
+------------------------------------------------------------------
+【3.1】flash.h 里加（在 FLASH_READID_CMD 下面，声明区上面）
+------------------------------------------------------------------
+#define FLASH_READID_CMD 0x9F          /* 你原来就有这行，留着 */
+#define FLASH_READSR1_CMD 0x05
+#define FLASH_READ_CMD 0x03
+#define FLASH_WRITE_ENABLE_CMD 0x06
+#define FLASH_PAGE_PROGRAM_CMD 0x02
+#define FLASH_SECTOR_ERASE_CMD 0x20
+
+/* SR1 的位，直接写名字别写 0x01/0x02，读代码时一眼看懂 */
+#define SR1_BUSY 0x01
+#define SR1_WEL  0x02
+
+/* 声明区（Flash_ReadId 那行后面）*/
+uint8_t Flash_ReadSR1(void);
+void Flash_WriteEnable(void);
+void Flash_WaitBusy(uint32_t timeout_ms);
+void Flash_SectorErase(uint32_t addr);
+void Flash_PageProgram(uint32_t addr, const uint8_t *buf, uint16_t len);
+void Flash_ReadData(uint32_t addr, uint8_t *buf, uint16_t len);
+
+------------------------------------------------------------------
+【3.2】flash.c 里加（Flash_SendCmd 定义之后）
+------------------------------------------------------------------
+
+/* 读状态寄存器 1 */
+uint8_t Flash_ReadSR1(void)
+{
+    uint8_t sr;
+
+    FLASH_CS_LOW();
+    Flash_SendCmd(FLASH_READSR1_CMD);
+    sr = Flash_SendCmd(0xFF);
+    FLASH_CS_HIGH();
+
+    return sr;
+}
+
+/* 批量发（只发不收）。为什么单独写：页编程要连续推 256 字节，
+   一字节一字节调 Flash_SendCmd 会慢到没法用。 */
+static void Flash_TxBulk(const uint8_t *buf, uint16_t len)
+{
+    HAL_SPI_Transmit(&hspi2, (uint8_t *)buf, len, 100);
+}
+
+/* 批量收（只收）。
+   注意 F1 HAL 的坑：全双工主机模式下 HAL_SPI_Receive 内部是
+   TransmitReceive(hspi, pData, pData, ...)，会把你的接收缓冲当发送数据推出去。
+   对 Flash 读没影响（它不看 MOSI），但你要知道这个行为。 */
+static void Flash_RxBulk(uint8_t *buf, uint16_t len)
+{
+    HAL_SPI_Receive(&hspi2, buf, len, 100);
+}
+
+/* 写使能。每次擦/写之前单独发一次；WEL 在 CS 拉高后才真正置位。 */
+void Flash_WriteEnable(void)
+{
+    FLASH_CS_LOW();
+    Flash_SendCmd(FLASH_WRITE_ENABLE_CMD);
+    FLASH_CS_HIGH();
+}
+
+/* 等 BUSY 清零。带超时，防止芯片坏了程序死在这。
+   HAL_GetTick() 是 uint32_t，用"差值"比较（- start），回绕时结果也对，
+   别写成 start + timeout 这种。 */
+void Flash_WaitBusy(uint32_t timeout_ms)
+{
+    uint32_t start = HAL_GetTick();
+
+    while (Flash_ReadSR1() & SR1_BUSY)
+    {
+        if (HAL_GetTick() - start > timeout_ms)
+        {
+            break;
+        }
+    }
+}
+
+/* 扇区擦除。流程：写使能 -> 0x20 -> 3字节地址 -> 拉高 CS -> 等 BUSY。
+   擦除是 CS 拉高之后才真正开始的，慢的是 WaitBusy（几十~几百 ms）。 */
+void Flash_SectorErase(uint32_t addr)
+{
+    Flash_WriteEnable();
+
+    FLASH_CS_LOW();
+
+    Flash_SendCmd(FLASH_SECTOR_ERASE_CMD);
+    Flash_SendCmd((uint8_t)(addr >> 16));
+    Flash_SendCmd((uint8_t)(addr >> 8));
+    Flash_SendCmd((uint8_t)(addr));
+
+    FLASH_CS_HIGH();
+
+    Flash_WaitBusy(500);
+}
+
+/* 页编程。流程同擦除，只是数据段要连续发。
+   调用者必须保证：不跨页（addr 到 addr+len-1 在同一页内）、已擦过。 */
+void Flash_PageProgram(uint32_t addr, const uint8_t *buf, uint16_t len)
+{
+    Flash_WriteEnable();
+
+    FLASH_CS_LOW();
+
+    Flash_SendCmd(FLASH_PAGE_PROGRAM_CMD);
+    Flash_SendCmd((uint8_t)(addr >> 16));
+    Flash_SendCmd((uint8_t)(addr >> 8));
+    Flash_SendCmd((uint8_t)(addr));
+
+    Flash_TxBulk(buf, len);
+
+    FLASH_CS_HIGH();
+
+    Flash_WaitBusy(50);
+}
+
+/* 连续读。没长度限制，地址自动加，不需要写使能也不需要等 BUSY。 */
+void Flash_ReadData(uint32_t addr, uint8_t *buf, uint16_t len)
+{
+    FLASH_CS_LOW();
+
+    Flash_SendCmd(FLASH_READ_CMD);
+    Flash_SendCmd((uint8_t)(addr >> 16));
+    Flash_SendCmd((uint8_t)(addr >> 8));
+    Flash_SendCmd((uint8_t)(addr));
+
+    Flash_RxBulk(buf, len);
+
+    FLASH_CS_HIGH();
+}
+
+------------------------------------------------------------------
+【3.3】main.c 里加测试（USER CODE BEGIN 2 里，ReadId 打印之后）
+------------------------------------------------------------------
+  /* 用扇区 1 做实验，别动扇区 0（留给第三步存元数据） */
+  {
+    uint8_t wbuf[16];
+    uint8_t rbuf[16];
+    uint8_t i, diff = 0;
+    const uint32_t test_addr = 0x00001000;
+
+    for (i = 0; i < 16; i++)
+    {
+      wbuf[i] = 0x10 + i;          /* 递增序列，错位一眼看出来 */
+    }
+
+    printf("\r\n--- erase / program / read test @0x%06X ---\r\n",
+           (unsigned)test_addr);
+
+    /* 1. 擦 */
+    Flash_SectorErase(test_addr);
+    printf("sector erased\r\n");
+
+    /* 2. 擦完必须全 FF，这一步验证"擦除真的发生了" */
+    Flash_ReadData(test_addr, rbuf, 16);
+    printf("after erase: ");
+    for (i = 0; i < 16; i++) printf("%02X ", rbuf[i]);
+    printf("\r\n");
+
+    /* 3. 写 */
+    Flash_PageProgram(test_addr, wbuf, 16);
+    printf("programmed\r\n");
+
+    /* 4. 读回对比 */
+    Flash_ReadData(test_addr, rbuf, 16);
+    printf("read back : ");
+    for (i = 0; i < 16; i++) printf("%02X ", rbuf[i]);
+    printf("\r\n");
+
+    for (i = 0; i < 16; i++)
+    {
+      if (rbuf[i] != wbuf[i]) diff++;
+    }
+
+    if (diff == 0) printf("PASS: 16/16 bytes match\r\n");
+    else           printf("FAIL: %d/16 bytes differ\r\n", diff);
+  }
+
+  /* 说明：main.c 里这段用了大括号包起来，是因为 C 编译器对
+     "语句之后声明变量"要求严格，包成块最稳（你之前那个 uint32_t id
+     直接写能编过是 ARMCC 放行了，不代表别处也放行）。 */
+
+
+【4】怎么算通过
+
+ 串口应该看到：
+
+   --- erase / program / read test @0x001000 ---
+   sector erased
+   after erase: FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF
+   programmed
+   read back : 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 1E 1F
+   PASS: 16/16 bytes match
+
+ 关键看 after erase 那行：必须是 16 个 FF。
+ 如果它不是全 FF，说明擦除没生效，后面就算"读回来对"也是假象
+ （因为上次实验的数据还在，你可能读到的就是上次写的，跟这次无关）。
+
+
+【5】最容易踩的坑（按概率排）
+
+ 1. 忘了 WriteEnable。擦/写都不生效，读回来还是 FF 或旧数据。
+    表现：没有任何报错，只是"写不进去"。
+ 2. 页编程跨页。地址回卷到页首，把刚写的数据覆盖了。
+    这是 Flash 驱动 bug 第一名。16 字节测试不会触发（都在一页内），
+    但你要知道有这条线，第三步会专门处理。
+ 3. 擦完不等 BUSY 就去写。芯片还在擦，你发的写指令直接被忽略。
+    表现：写不进去，或者只写了一部分。
+ 4. 扇区地址没对齐。0x20 只会按 4KB 对齐处理，你以为擦的是 A，
+    实际擦的是 A & 0xFFFFF000。地址低 12 位必须是 0。
+ 5. 读回来全 0 或全 FF 但"以为成功了"。用递增序列 + 对比，
+    别用"看一眼好像对"这种验收方式。
+ 6. 批量读用 HAL_SPI_Receive 时，没意识到它会把缓冲内容发出去。
+    对 Flash 没事，但这是 F1 HAL 的暗坑，心里要有数。
+
+ 另外：第一次上电读 ID 可能是 0xFFFFFF（芯片还没就绪），
+ 这是正常的，不是 bug。你可以在 Flash_Init 之后、真正用之前
+ 先空读一次 ID 把它"唤醒"，或者干脆多延时一点。
+
+
+【6】动手打勾
+
+ [ ] flash.h 加 5 个指令宏 + 2 个位宏 + 6 个声明
+ [ ] flash.c 加 Flash_ReadSR1
+ [ ] flash.c 加 Flash_TxBulk / Flash_RxBulk
+ [ ] flash.c 加 Flash_WriteEnable / Flash_WaitBusy
+ [ ] flash.c 加 Flash_SectorErase / Flash_PageProgram / Flash_ReadData
+ [ ] main.c 加测试流程
+ [ ] 编译 0 Error 0 Warning
+ [ ] 下载，看 after erase 是不是全 FF
+ [ ] 看 read back 是不是 10~1F，PASS
+
+ 强烈建议额外做一次"故意犯错"实验：
+ 把 Flash_SectorErase 里的 Flash_WriteEnable() 注释掉，重新下载，
+ 看看是什么现象（擦除不生效）。见过一次"没写使能"的样子，
+ 以后半夜调试能省两小时。
+
+
+【7】第三步会用到什么（先有个印象）
+
+  - 定长记录：每条固定 16 字节，存"序号 + 时间戳 + 数据 + 校验"
+  - 元数据扇区：单独一个扇区存"已经写了多少条 / 写指针"
+  - 断电续写：上电读元数据 -> 拿到写指针 -> 继续追加
+  - 扇区写满换下一个，全写完从头循环（环形）
+
+ 到那时 PageProgram 每次还是只能写一页内、且必须先擦，
+ 记录框架要做的就是在这些硬约束上叠出"看起来能无限追加"的效果。
+==============================================================================
