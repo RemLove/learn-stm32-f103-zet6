@@ -201,19 +201,19 @@
         {
             "name": "Exercise02",
             "includePath": [
-                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Core\\Inc",
-                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Drivers\\STM32F1xx_HAL_Driver\\Inc",
-                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Drivers\\STM32F1xx_HAL_Driver\\Inc\\Legacy",
-                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Drivers\\CMSIS\\Device\\ST\\STM32F1xx\\Include",
-                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Drivers\\CMSIS\\Include",
-                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Interface\\LCD",
-                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Interface\\Menu",
-                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Interface\\KEY",
+                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu01\\Core\\Inc",
+                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu01\\Drivers\\STM32F1xx_HAL_Driver\\Inc",
+                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu01\\Drivers\\STM32F1xx_HAL_Driver\\Inc\\Legacy",
+                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu01\\Drivers\\CMSIS\\Device\\ST\\STM32F1xx\\Include",
+                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu01\\Drivers\\CMSIS\\Include",
+                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu01\\Interface\\LCD",
+                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu01\\Interface\\Menu",
+                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu01\\Interface\\KEY",
                 "D:\\keil5\\core\\ARM\\ARMCC\\include",
                 "D:\\keil5\\core\\ARM\\ARMCC\\include\\rw",
-                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\MDK-ARM",
-                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Core\\Src",
-                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Drivers\\STM32F1xx_HAL_Driver\\Src"
+                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu01\\MDK-ARM",
+                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu01\\Core\\Src",
+                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu01\\Drivers\\STM32F1xx_HAL_Driver\\Src"
             ],
             "defines": [
                 "USE_HAL_DRIVER",
