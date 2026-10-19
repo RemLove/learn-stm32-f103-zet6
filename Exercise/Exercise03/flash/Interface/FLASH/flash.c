@@ -34,3 +34,87 @@ static uint8_t Flash_SendCmd(uint8_t tx)
     }
     return rx;
 }
+
+uint8_t Flash_ReadSR1(void)
+{
+    FLASH_CS_LOW();
+    Flash_SendCmd(FLASH_READSR1_CMD);
+    uint8_t ret=Flash_SendCmd(0xFF);
+    FLASH_CS_HIGH();
+    return ret;
+}
+
+void Flash_WriteEnable(void)
+{
+    FLASH_CS_LOW();
+    Flash_SendCmd(FLASH_WRITE_ENABLE_CMD);
+    FLASH_CS_HIGH();
+}
+
+void Flash_WaitBusy(uint32_t timeout_ms)
+{
+    uint32_t start =HAL_GetTick();
+    while(Flash_ReadSR1()&SR1_BUSY)
+    {
+        if(HAL_GetTick()-start>timeout_ms)
+        {
+            break;
+        }
+    }
+}
+//扇区擦除 4kb 4096个字节
+void Flash_SectorErase(uint32_t addr)
+{
+    Flash_WriteEnable();
+    FLASH_CS_LOW();
+    Flash_SendCmd(FLASH_SECTOR_ERASE_CMD);
+    Flash_SendCmd((uint8_t)(addr >> 16));
+    Flash_SendCmd((uint8_t)(addr >> 8));
+    Flash_SendCmd((uint8_t)(addr));
+
+    FLASH_CS_HIGH();
+
+    Flash_WaitBusy(500);   /* 扇区擦除最长约 400ms，给 500ms 余量 */
+}
+//批量发  页编程要连续推 256 字节，一字节一字节调 Flash_SendCmd会被 HAL 的函数开销拖死
+static void Flash_TxBulk(const uint8_t *buf, uint16_t len)
+{
+    HAL_SPI_Transmit(&hspi2, (uint8_t *)buf, len, 100);
+}
+
+void Flash_PageProgram(uint32_t addr, const uint8_t * buf, uint16_t len)
+{
+    Flash_WriteEnable();
+    FLASH_CS_LOW();
+    Flash_SendCmd(FLASH_PAGE_PROGRAM_CMD);
+    Flash_SendCmd((uint8_t)(addr >> 16));
+    Flash_SendCmd((uint8_t)(addr >> 8));
+    Flash_SendCmd((uint8_t)(addr));
+
+    Flash_TxBulk(buf, len);
+
+    FLASH_CS_HIGH();
+
+    Flash_WaitBusy(50);    /* 一页编程最长约 3ms，给 50ms 足够 */
+}
+static void Flash_RxBulk(uint8_t *buf, uint16_t len)
+{
+    HAL_SPI_Receive(&hspi2, buf, len, 100);
+}
+/* 批量收（只收）。
+   F1 HAL 的暗坑：全双工主机模式下 HAL_SPI_Receive 内部实际是
+   TransmitReceive(hspi, pData, pData, ...)，把你的接收缓冲当发送数据推出去。
+   对 Flash 读没影响（它不看 MOSI），但你得知道有这回事。 */
+void Flash_ReadData(uint32_t addr, uint8_t *buf, uint16_t len)
+{
+    FLASH_CS_LOW();
+
+    Flash_SendCmd(FLASH_READ_CMD);
+    Flash_SendCmd((uint8_t)(addr >> 16));
+    Flash_SendCmd((uint8_t)(addr >> 8));
+    Flash_SendCmd((uint8_t)(addr));
+
+    Flash_RxBulk(buf, len);
+
+    FLASH_CS_HIGH();
+}

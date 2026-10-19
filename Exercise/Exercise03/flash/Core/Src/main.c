@@ -26,6 +26,7 @@
 /* USER CODE BEGIN Includes */
 #include "flash.h"
 #include <stdio.h>
+#include "log.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,6 +58,57 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+void flash_test(void)
+{
+    /* ==================================================================
+     第三步验收：黑匣子。
+     为什么测试这么设计：每次上电自动写一条"开机记录"，
+     然后把全部历史打印出来。按复位键 = 一次真实的断电重启
+     （RAM 全清、程序从头跑），所以：
+     count 一次比一次大、历史一条不少 —— 就是断电续写成立的铁证。 */
+  {
+    uint8_t data[12];
+    uint8_t rec[LOG_REC_SIZE];
+    uint8_t i;
+    uint16_t n;
+
+    Log_Init();
+    n = Log_Count();
+    printf("\r\n--- blackbox ---\r\n");
+    printf("count on boot = %u\r\n", (unsigned)n);
+
+    /* 为什么往 data 里塞 HAL_GetTick()：
+       每次上电 tick 值都不同，能证明"这次写进去的是新数据"，
+       而不是读到了上次的残留。 */
+    data[0] = 0xBB;                            /* 开机标记 */
+    data[1] = (uint8_t)(HAL_GetTick() >> 8);
+    data[2] = (uint8_t)HAL_GetTick();
+    Log_Append(data, 3);
+    printf("appended one, count = %u\r\n", (unsigned)Log_Count());
+
+    /* 全量回放：从第 0 条读到最新一条，逐条验校验和。
+       第一次上电会格式化（只有 count=0 这条），
+       第二次上电开始就能看到"上一条还在"。 */
+    for (i = 0; i < Log_Count(); i++)
+    {
+      uint8_t sum = 0, j;
+
+      Log_Read(i, rec);
+      for (j = 0; j < 15; j++) sum += rec[j];
+
+      printf("rec[%u] seq=%u len=%u sum=%s data=%02X %02X%02X\r\n",
+             (unsigned)i,
+             (unsigned)((rec[0] << 8) | rec[1]),
+             (unsigned)rec[2],
+             (sum == rec[15]) ? "OK" : "BAD",
+             (unsigned)rec[3],
+             (unsigned)rec[4], (unsigned)rec[5]);
+    }
+  }
+
+}
+
 
 /* USER CODE END 0 */
 
@@ -95,6 +147,8 @@ int main(void)
   Flash_Init();
   uint32_t id=Flash_ReadId();
   printf("FLASH JEDEC = 0x%06X\r\n", (unsigned)id);
+
+  flash_test();
   /* USER CODE END 2 */
 
   /* Infinite loop */
