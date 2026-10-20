@@ -1,0 +1,281 @@
+================================================================================
+ 题5 示波器 —— 参考实现的勘误与替换代码 (纯文本, 不参与编译)
+ 以本文件为准: _osc_ref.txt 里对应函数按这里替换, 其余部分(网格/UI/按键/自测信号)不变
+================================================================================
+
+【勘误 1 · 真 bug】触发点回绕会画出一条"接缝"  (必改)
+--------------------------------------------------------------------------------
+_ref 里的做法: 先在 trace[] 上找触发下标 trig_ofs, 画图时
+    trace[(s + k + trig_ofs) % trace_n]
+为什么错:
+   trace[] 是 snapshot() 按时间顺序拷出来的一维数组 —— 它**不是环形**。
+   trace[0] 最旧, trace[n-1] 最新。从 trig_ofs 往后画, 画到 n-1 就没数据了,
+   取模回绕拿到的是 trace[0] = **比触发点还早 (n - trig_ofs) 个样本**的旧数据。
+   结果: 波形右半段"跳回过去", 接缝处相位突变, 看起来像一根莫名其妙的竖线。
+
+什么时候看得见 (很关键):
+   1kHz / 1ms 档: n=200, 周期 20 样本, 首沿几乎总在前 20 个样本内,
+     n - trig_ofs 恰好接近整周期 -> 接缝只差半个像素, 看不出来。
+   500Hz / 1ms 档: n=200, 周期 40 样本。trig_ofs 在 1~40 之间随机,
+     n - trig_ofs 对 40 取模可能落到 20 左右 -> **半个周期的错位**, 方波明显跳一步。
+   2kHz / 1ms 档同理, 最坏错位接近一个整周期。
+   验收里刚好有"换 500Hz / 2kHz 各再测一次" -> 一定会撞上。
+
+正确做法: 触发必须在"磁带" adc_buf 上找, 不是在 trace 上找。
+   adc_buf 是 DMA 循环写的真环形缓冲, 回绕取到的下标在时间上是"紧接着的",
+   从触发点开始连取 n 个样本, 得到的 trace[] 天然是"触发之后的一整屏"。
+   顺带把 find_trigger() 整个删掉, 画图循环也不用再做 % 取模 (又省一笔除法)。
+
+   _osc_why.txt 第 4 节自测答案里"快照是环形数据的一段, 回绕后时间依然连续"
+   —— 那句话在 _ref 的实现下是**不成立**的; 按下面改完之后才成立。
+
+【连带改动】OSC_BUF_LEN 必须 2048 -> 4096
+--------------------------------------------------------------------------------
+   要在磁带里找触发, 就得留出"触发点之后还有满一屏"的余量:
+   窗口 = 2 x trace_n (前半段找触发, 后半段保证够画)。
+   10ms 档 trace_n = 2000 -> 需要 4000 个样本, 2048 装不下 -> 改 4096。
+   代价 8KB RAM, F103ZET6 有 64KB, 完全够; 磁带长度变成 204ms。
+   !! 硬前提: 2 * trace_n <= OSC_BUF_LEN。以后要加更大的档 (比如 100ms/格),
+      缓冲区必须同步加倍, 否则窗口起点算出来的下标会落到"上一圈"的旧数据上,
+      接缝又回来了 —— 这类"环形缓冲长度必须 >= 2 倍窗口"的约束,
+      写进宏注释里, 别只记在脑子里。
+================================================================================
+
+
+六、替换代码 (覆盖 _osc_ref.txt 里对应的部分)
+--------------------------------------------------------------------------------
+
+/* ---- osc.h: 只改这一行 ---- */
+#define OSC_BUF_LEN     4096u         /* DMA 环形缓冲: 4096 @ 20kHz = 204ms
+                                         必须 >= 2 x 最大 trace_n (=2000x2) */
+
+
+/* ---- osc.c: 磁带写指针 + 环形自增 (放在 adc_buf 定义之后) ---- */
+static uint16_t buf_head(void)          /* DMA 下一格要写到哪: 0 ~ BUF_LEN-1 */
+{
+    uint16_t head = (uint16_t)(OSC_BUF_LEN - DMA1_Channel1->CNDTR);
+    return (head >= OSC_BUF_LEN) ? 0u : head;    /* CNDTR 刚回卷时正好等于 BUF_LEN */
+}
+
+static uint16_t buf_next(uint16_t idx)  /* 环形 +1, 一次条件减法代替取模 */
+{
+    idx++;
+    return (idx >= OSC_BUF_LEN) ? (uint16_t)(idx - OSC_BUF_LEN) : idx;
+}
+
+
+/* ---- osc.c: snapshot() 整体替换 ---- */
+/* ---------- 一帧快照: 防撕裂 + 触发对齐 (都在磁带上做) ----------
+   1) 停 TIM3 -> ADC 没人触发 -> DMA 的 CNDTR 冻结 -> 磁带静止, 随便读
+   2) 历史窗口取最近 2n 个样本; 只在**前半段(长度 n)** 里找触发,
+      这样触发点之后必定还有满一屏 n 个样本可拷
+   3) 从触发点起连拷 n 个样本到 trace[] (环形回绕, 时间连续)
+   4) 重启 TIM3, 采样从冻结处继续, 只丢几十 us
+   触发关掉(s_trig_en=0)或幅度太小(直流)时 trig = start,
+   等价于"没触发随便拍一张", 正好用来演示波形漂移。 */
+static void snapshot(uint16_t n)
+{
+    HAL_TIM_Base_Stop(&htim3);
+
+    uint16_t head  = buf_head();                          /* 下一写入位置 */
+    uint16_t start = (uint16_t)(head + OSC_BUF_LEN - 2u * n);   /* 窗口起点(可能 >= BUF) */
+    if (start >= OSC_BUF_LEN) start = (uint16_t)(start - OSC_BUF_LEN);
+
+    /* 1) 前半段 max/min -> 自适应中点 (阈值只算一次, 触发和测量共用口径) */
+    uint16_t vmax = 0, vmin = 0xFFFF;
+    uint16_t idx  = start;
+
+    for (uint16_t i = 0; i < n; i++)
+    {
+        uint16_t v = adc_buf[idx];
+        if (v > vmax) vmax = v;
+        if (v < vmin) vmin = v;
+        idx = buf_next(idx);
+    }
+    uint16_t mid = (uint16_t)(vmin + (vmax - vmin) / 2u);
+
+    /* 2) 前半段里找第一个"上升穿中点"; Vpp < 40 码当直流, 不触发 */
+    uint16_t trig = start;
+    if (s_trig_en && (uint16_t)(vmax - vmin) >= 40u)
+    {
+        uint16_t prev = start;
+
+        for (uint16_t i = 1u; i < n; i++)
+        {
+            uint16_t cur = buf_next(prev);
+
+            if (adc_buf[prev] < mid && adc_buf[cur] >= mid)
+            {
+                trig = cur;
+                break;
+            }
+            prev = cur;
+        }
+    }
+
+    /* 3) 从触发点顺序拷 n 个样本 —— 磁带是环形, 回绕取到的就是"之后的数据" */
+    idx = trig;
+    for (uint16_t i = 0; i < n; i++)
+    {
+        trace[i] = adc_buf[idx];
+        idx = buf_next(idx);
+    }
+
+    HAL_TIM_Base_Start(&htim3);
+}
+
+
+/* ---- osc.c: draw_wave() 去掉 trig_ofs 参数, 索引不再取模 ---- */
+static void draw_wave(const meas_t *m)          /* 原: draw_wave(const meas_t *m, uint16_t trig_ofs) */
+{
+    static const uint16_t vdiv_tab[3] = { 1000u, 500u, 250u };
+    uint16_t vdiv_mv = vdiv_tab[s_vdiv];
+    int32_t  mid_mv  = (int32_t)((uint32_t)(m->code_max + m->code_min) * 3300u / 8192u);
+    int32_t  prev_y  = -1;
+
+    for (uint16_t col = 0; col < OSC_W; col++)
+    {
+        uint16_t s   = (uint16_t)((uint32_t)col * trace_n / OSC_W);
+        uint16_t cnt = (uint16_t)((uint32_t)(col + 1u) * trace_n / OSC_W) - s;
+        uint16_t mx = 0, mn = 0xFFFF;
+
+        for (uint16_t k = 0; k < cnt; k++)
+        {
+            uint16_t v = trace[(uint16_t)(s + k)];     /* 已经对齐到触发点, 直接顺序取 */
+            if (v > mx) mx = v;
+            if (v < mn) mn = v;
+        }
+
+        int32_t y_top = code_to_y(mx, mid_mv, vdiv_mv);
+        int32_t y_bot = code_to_y(mn, mid_mv, vdiv_mv);
+
+        if (y_top == y_bot)                        /* 平坦列: 与上一列连线, 防断线 */
+        {
+            if (prev_y < 0)
+                LCD_DrawPoint(OSC_X0 + col, (uint16_t)y_top, 1, OSC_C_TRACE);
+            else
+                LCD_DrawLine(OSC_X0 + col - 1u, (uint16_t)prev_y,
+                             OSC_X0 + col, (uint16_t)y_top, 1, OSC_C_TRACE);
+            prev_y = y_top;
+        }
+        else                                       /* 跨度列: 竖直包络 */
+        {
+            LCD_DrawLine(OSC_X0 + col, (uint16_t)y_top,
+                         OSC_X0 + col, (uint16_t)y_bot, 1, OSC_C_TRACE);
+            prev_y = (y_top + y_bot) / 2;
+        }
+    }
+}
+
+
+/* ---- osc.c: OSC_Task() 里那 4 行改成 ---- */
+    trace_n = (s_tb == OSC_TB_1MS) ? 200u : 2000u;
+    snapshot(trace_n);                 /* 拷完就已经触发对齐了 */
+
+    meas_t m;
+    measure(&m);                       /* 不再需要 find_trigger() */
+
+    fill_rect(OSC_X0, OSC_Y0, OSC_W, OSC_H, OSC_C_BG);
+    draw_grid();
+    draw_wave(&m);                     /* 不再传 trig_ofs */
+    draw_status();
+    draw_meas(&m);
+
+/* ---- 删掉整个 find_trigger() 函数 ---- */
+================================================================================
+
+
+七、顺带优化 measure(): 首尾沿改"整帧覆盖", 并消掉 EDGE_MAX 上限
+--------------------------------------------------------------------------------
+_ref 里的问题:
+ 1) rise[]/fall[] 只有 16 个槽, 满了就丢后面的沿 -> "首尾沿平均"实际只用前 16 个沿,
+    跨度只有 15 个周期, 一帧 100 个周期的数据白扔了;
+ 2) nr/nf 是 uint8_t: 10ms 档 + 5kHz 一帧 500 个沿 -> **溢出**,
+    (nr-1) 直接算错, 频率显示乱跳;
+ 3) 边沿位置是"0.1 样本"单位, 最大 20000, uint16_t 暂时够。
+    将来加 200kHz 档(trace_n 变大)会溢出 -> 那时要换 uint32_t。
+
+改法: 不用数组, 一遍扫描里抓 4 个量就够:
+  r_first 首上升沿 / r_last 末上升沿 / nr 沿总数 / f_after 首沿后第一个下降沿 /
+  r_next 再之后的第一个上升沿 (占空比要这三个沿)。
+这样首尾沿永远覆盖整帧, 精度最好, 也再没有容量上限。
+
+static void measure(meas_t *m)
+{
+    uint16_t vmax = 0, vmin = 0xFFFF;
+
+    for (uint16_t i = 0; i < trace_n; i++)
+    {
+        if (trace[i] > vmax) vmax = trace[i];
+        if (trace[i] < vmin) vmin = trace[i];
+    }
+    m->code_max = vmax;
+    m->code_min = vmin;
+    m->vpp_mv   = (uint32_t)(vmax - vmin) * 3300u / 4096u;
+    m->freq_x10 = 0;
+    m->duty_x10 = 0xFFFFFFFFu;
+
+    uint16_t mid = (uint16_t)(vmin + (vmax - vmin) / 2u);
+    if ((uint16_t)(vmax - vmin) < 40u) return;      /* 幅度 < 33mV 视为直流/静默 */
+
+    uint16_t r_first = 0xFFFF, r_last = 0;
+    uint16_t f_after = 0xFFFF, r_next = 0xFFFF;
+    uint16_t nr = 0;                 /* 注意 uint16_t: 500 个沿也不怕 */
+    uint8_t  st = 0;                 /* 0=等首上升沿 1=等下降沿 2=等下一个上升沿 3=够了 */
+
+    for (uint16_t i = 1u; i < trace_n; i++)
+    {
+        int32_t a = (int32_t)trace[i - 1u] - (int32_t)mid;
+        int32_t b = (int32_t)trace[i]      - (int32_t)mid;
+
+        if (a < 0 && b >= 0)                       /* 上升穿中点 */
+        {
+            uint16_t pos = (uint16_t)((i - 1u) * 10u + (uint16_t)(a * 10 / (a - b)));
+
+            if (nr == 0u) r_first = pos;           /* 首沿 */
+            r_last = pos;                          /* 一直刷, 循环结束就是末沿 */
+            nr++;
+
+            if (st == 0u)      st = 1u;
+            else if (st == 2u) { r_next = pos; st = 3u; }
+        }
+        else if (a > 0 && b <= 0)                  /* 下降穿中点 */
+        {
+            if (st == 1u)
+            {
+                f_after = (uint16_t)((i - 1u) * 10u + (uint16_t)(a * 10 / (a - b)));
+                st = 2u;
+            }
+        }
+    }
+
+    /* 首尾沿平均: 误差只付一次(起点+终点), 摊到 (nr-1) 个周期上 => <0.5% */
+    if (nr >= 2u && r_last > r_first)
+        m->freq_x10 = (uint32_t)OSC_FS * 100u * (uint32_t)(nr - 1u)
+                    / (uint32_t)(r_last - r_first);
+
+    /* 占空比: 同一个中点阈值 -> 高电平时间 / 整周期 */
+    if (f_after != 0xFFFF && r_next != 0xFFFF && r_next > r_first)
+        m->duty_x10 = (uint32_t)(f_after - r_first) * 1000u
+                    / (uint32_t)(r_next - r_first);
+}
+
+ 插值符号检查: 上升穿 a<0, b>=0 -> a-b<0, a*10/(a-b) 是正数, 落在 0~10 之间。
+ 例: 前样本比中点低 5 码(a=-5), 后样本高 5 码(b=+5) -> -50/-10 = 5 -> 正中间。
+ 注意这是"a 到 b 之间"的比例, 所以 pos 的分母是 (a-b), 别写成 (b-a)。
+
+ 溢出边界 (以后改采样率要看):
+   OSC_FS*100*(nr-1): 20kHz 下一帧最多约 1000 个沿 -> 2e6*999 = 2.0e9 < 4.29e9 安全。
+   若加到 200kHz 档, 要先把 (nr-1) 用 64 位或者把公式换个顺序算。
+================================================================================
+
+
+八、改完怎么验 (三步, 5 分钟)
+--------------------------------------------------------------------------------
+1. 编译过 -> PA8 接 PC0, 1ms 档: 方波应稳定, F=1000.0Hz, D=50.0%
+2. 换信号源 500Hz / 2kHz (或改 TIM1 的 Period=2000-1 / 500-1), 1ms 档:
+   波形稳定且**接缝处没有竖线/错位** —— 这是这次修复的判据。
+   (改之前 500Hz 大概率能看到波形右半段跳半步)
+3. KEY_UP 关触发: 波形开始左右漂; 再开: 立刻锁住。
+   关触发时 trig=start, 拷的就是窗口前半段, 和原来行为一致。
+================================================================================
