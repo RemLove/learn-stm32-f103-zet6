@@ -11,6 +11,8 @@
                 "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu02\\Interface\\KEY",
                 "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu02\\Interface\\LCD",
                 "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu02\\Interface\\MENU",
+                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu02\\Interface\\FLASH",
+                "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu02\\Interface\\LOG",
                 "D:\\keil5\\core\\ARM\\ARMCC\\include",
                 "D:\\keil5\\core\\ARM\\ARMCC\\include\\rw",
                 "d:\\keil5\\stm32zet6\\Exercise\\Exercise02\\Menu02\\MDK-ARM",

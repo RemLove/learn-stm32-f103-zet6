@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "spi.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -30,6 +31,8 @@
 #include "key.h"
 #include "menu.h"
 #include "tim.h"
+#include "flash.h"
+#include "log.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -96,35 +99,15 @@ int main(void)
   MX_USART1_UART_Init();
   MX_FSMC_Init();
   MX_TIM3_Init();
+  MX_SPI2_Init();
+  Flash_Init();
+  Log_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);   /* 必须在 MX_TIM3_Init 之后 */
 
   printf("S1: before LCD_Init\r\n");
   LCD_Init();
   printf("S2: LCD_Init done, ID = %#x\r\n", (unsigned)LCD_ReadId());
-
-/* ---------------- 临时诊断开关 ----------------
- * 1 = 上电先刷三色，再每隔 40 行画一条白线
- *     用来判断到底是"屏/FSMC 写不进去"还是"菜单画错了"
- * 查完把这里改回 0 即可 */
-#define LCD_SELFTEST   0
-
-#if LCD_SELFTEST
-  printf("S3: selftest start\r\n");
-  LCD_ClearAll(RED);    HAL_Delay(500);
-  LCD_ClearAll(GREEN);  HAL_Delay(500);
-  LCD_ClearAll(BLUE);   HAL_Delay(500);
-  LCD_ClearAll(BLACK);  HAL_Delay(200);
-  {
-      uint16_t y;
-      for(y = 40; y < 320; y += 40)
-      {
-          LCD_DrawLine(0, y, 239, y, 2, WHITE);
-      }
-  }
-  HAL_Delay(4000);
-  printf("S4: selftest done\r\n");
-#endif
 
   Menu_Init();
   printf("S5: menu ready\r\n");

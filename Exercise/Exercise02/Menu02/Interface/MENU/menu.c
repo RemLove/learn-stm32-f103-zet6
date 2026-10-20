@@ -1,6 +1,7 @@
 #include "menu.h"
 #include "gpio.h"
 #include "tim.h"
+#include "log.h"
 
 /*==============================================================
  *  1. 屏幕布局
@@ -179,6 +180,68 @@ static const Menu_Page_t help_page =
     "help", NULL, 0, NULL, help_draw, NULL, 0
 };
 
+/*------------------- LOG 页（黑匣子） -------------------*/
+static void Menu_Back(void);    /* log_key 里要用，定义在文件后面，先报户口 */
+
+static void log_draw(void)
+{
+    char     buf[24];
+    uint8_t  rec[16];
+    uint16_t n = Log_Count();
+    uint8_t  sum = 0, j;
+
+    sprintf(buf, "count = %u", (unsigned)n);
+    LCD_WriteAsiciStr(20, 110, 16, WHITE, BLACK, (uint8_t *)buf);
+
+    /* 显示最新一条：序号 + 校验结果 + 数据 */
+    if(n >= 1)
+    {
+        Log_Read(n - 1, rec);
+        for(j = 0; j < 15; j++) sum += rec[j];
+
+        sprintf(buf, "last seq=%u %s",
+                (unsigned)((rec[0] << 8) | rec[1]),
+                (sum == rec[15]) ? "OK" : "BAD");
+        LCD_WriteAsiciStr(0, 140, 16, WHITE, BLACK, (uint8_t *)buf);
+
+        sprintf(buf, "data=%02X %02X%02X",
+                (unsigned)rec[3], (unsigned)rec[4], (unsigned)rec[5]);
+        LCD_WriteAsiciStr(0, 165, 16, WHITE, BLACK, (uint8_t *)buf);
+    }
+
+    LCD_WriteAsiciStr(0, 290, 16, GRAY, BLACK, (uint8_t *)"short=rec long=back");
+}
+
+/* key_hook 接管按键：短按 = 记一条，长按 = 返回。
+   key_evt 的清零在 Menu_Scan 里统一做，这里不用管。 */
+static void log_key(void)
+{
+    uint8_t data[12];
+
+    switch(key_evt)
+    {
+    case KEY_SHORT:
+        data[0] = 0xBB;                          /* 开机/按键标记 */
+        data[1] = (uint8_t)(HAL_GetTick() >> 8); /* 记录按键时刻 */
+        data[2] = (uint8_t)HAL_GetTick();
+        Log_Append(data, 3);
+        log_draw();                              /* 立刻刷新，新记录马上可见 */
+        break;
+
+    case KEY_LONG:
+        Menu_Back();
+        break;
+
+    default:
+        break;
+    }
+}
+
+static const Menu_Page_t log_page =
+{
+    "log", NULL, 0, NULL, log_draw, log_key, 0
+};
+
 
 /*------------------- 第一层：主菜单 -------------------*/
 static const Menu_Item_t main_item[] =
@@ -187,6 +250,7 @@ static const Menu_Item_t main_item[] =
     {"PWM",  &pwm_page,  NULL},
     {"TIME", &time_page, NULL},
     {"INFO", &info_page, NULL},
+    {"log",  &log_page,  NULL},
     {"HELP", &help_page, NULL},
 };
 static const Menu_Page_t main_page =

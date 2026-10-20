@@ -24,7 +24,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "flash.h"
+#include "log.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -91,6 +93,41 @@ int main(void)
   MX_SPI2_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+    /* ===== 黑匣子验收：每次上电写一条，回放全部历史 ===== */
+  {
+    uint8_t data[12];
+    uint8_t rec[16];
+    uint8_t i;
+    uint16_t n;
+
+    Log_Init();
+    n = Log_Count();
+    printf("\r\n--- blackbox ---\r\n");
+    printf("count on boot = %u\r\n", (unsigned)n);
+
+    data[0] = 0xBB;
+    data[1] = (uint8_t)(HAL_GetTick() >> 8);
+    data[2] = (uint8_t)HAL_GetTick();
+    Log_Append(data, 3);
+    printf("appended one, count = %u\r\n", (unsigned)Log_Count());
+
+    for (i = 0; i < Log_Count(); i++)
+    {
+      uint8_t sum = 0, j;
+
+      Log_Read(i, rec);
+      for (j = 0; j < 15; j++) sum += rec[j];
+
+      printf("rec[%u] seq=%u len=%u sum=%s data=%02X %02X%02X\r\n",
+             (unsigned)i,
+             (unsigned)((rec[0] << 8) | rec[1]),
+             (unsigned)rec[2],
+             (sum == rec[15]) ? "OK" : "BAD",
+             (unsigned)rec[3],
+             (unsigned)rec[4], (unsigned)rec[5]);
+    }
+  }
+
 
   /* USER CODE END 2 */
 
