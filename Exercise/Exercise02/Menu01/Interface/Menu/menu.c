@@ -52,7 +52,7 @@ static const menu_item_t LED2_item[]={
     {"off",NULL,Led2_Off}
 };
 static const menu_page_t led2_page={"LED2",LED2_item,2,two_y,NULL,NULL,NULL};//led2_page
-//第二层
+//第一层
 static const menu_item_t LED_item[]={
     {"LED1",&led1_page,NULL},
     {"LED2",&led2_page,NULL}
@@ -75,7 +75,7 @@ static const menu_page_t info_page={"info",NULL,0,NULL,NULL,info_draw,NULL};
 static void time_draw(void);
 static const menu_page_t time_page={"time",NULL,0,NULL,NULL,time_draw,NULL};
 
-//第一层
+
 static  menu_item_t main_items[] = {
     { "1.LED",   &LED_page,   NULL },
     { "2.PWM",   &pwm_page,   NULL },   /* 还没做，确定后无反应 */
