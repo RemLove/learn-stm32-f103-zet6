@@ -53,11 +53,17 @@
 static uint16_t adc_buf[BUF_LEN];
 static volatile uint32_t frame_cnt=0;
 
-#define HALF_LEN 502u
-static work[HALF_LEN];
+#define HALF_LEN 512u
+static uint16_t work[HALF_LEN];
 static volatile uint16_t work_fresh=0;
 
-uint16_t v_max,v_min,v_mid;
+
+static uint16_t v_max, v_min, v_mid;     /* 本帧最高/最低/中线(ADC原始值) */
+static uint16_t trig_i;                  /* 找到的画图起点下标 */
+static uint8_t  trig_ok;                 /* 1=本帧找到起点(TRIG) 0=没找到(FREE) */
+static volatile uint32_t trig_cnt = 0;   /* 找到起点的累计帧数(观察触发成功率) */
+
+#define TRIG_HYST 20u    /* 迟滞: 穿线要求跨过 mid±20(约16mV), 滤掉噪声假触发 */
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -85,7 +91,23 @@ static void Scope_ProcessFrame(void)
   v_max=vmax;
   v_min=vmin;
   v_mid=(v_max+v_min)/2;
-  //3.
+  //3.一次采样512个点 屏幕上只需要画320个点，前一百多个点用来寻找画图起点，找穿过中线第一个位置，没帧都从同一相位开始画
+  trig_ok = 0;                          /* 先假设找不到(直流/无信号 -> FREE) */
+  trig_i  = 0;                          /* 找不到就从0开始画(波形会滚, 但不卡死) */
+	
+	uint16_t up = v_mid + TRIG_HYST;                            /* 上门槛 */
+  uint16_t dn = (v_mid > TRIG_HYST) ? (v_mid - TRIG_HYST) : 0; /* 下门槛(防下溢) */
+	
+  for (uint16_t i = 1; i + 320 < HALF_LEN; i++)
+  {
+    if (work[i - 1] < dn && work[i] >= up)
+    {
+      trig_i  = i;                      /* 命中: 这一帧的画图起点 */
+      trig_ok = 1;
+      trig_cnt++;                       /* 成功触发+1 (和frame_cnt对比看成功率) */
+      break;                            /* 只要第一个, 后面的过零点不要 */
+    }
+  }
 }
 /* USER CODE END 0 */
 
@@ -135,8 +157,9 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+    
     /* USER CODE BEGIN 3 */
+		Scope_ProcessFrame();
   }
   /* USER CODE END 3 */
 }
