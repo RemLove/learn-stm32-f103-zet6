@@ -12,7 +12,7 @@
 
 //任务句柄
 TaskHandle_t task1_handle=NULL;
-
+TaskHandle_t task2_handle=NULL;
 TaskHandle_t task_start_handle=NULL;
 
 //任务一
@@ -48,19 +48,23 @@ void task1(void *pvParameters)
     }
 }
 
-//栈溢出钩子:任务栈用完了,停在这里能立刻知道是哪个任务
-//(configCHECK_FOR_STACK_OVERFLOW=2 时 FreeRTOS 会调用它)
-void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
+//任务二 获取任务一的状态
+void task2(void *pvParameters)
 {
-    (void)xTask;
-    (void)pcTaskName;
-    taskDISABLE_INTERRUPTS();
-    for( ; ; )
+    int ret=0;
+    ret = uxTaskPriorityGet(task1_handle);
+    printf("%d\r\n",ret);
+    vTaskPrioritySet(task1_handle,4);
+    ret = uxTaskPriorityGet(task1_handle);
+    printf("%d\r\n",ret);
+    for (;;)
     {
+        
     }
+    
 }
 
-//任务四:这个任务用来启动三个任务,用完就删
+//任务三:这个任务用来启动三个任务,用完就删
 void task_start(void*pvParameters)
 {
 
@@ -73,7 +77,14 @@ void task_start(void*pvParameters)
                         TASK_PRIORITY,
                         &task1_handle
                         );
-
+    
+    xTaskCreate(task2,
+                        "task2",
+                        TASK_STACK_DEPTH,
+                        NULL,
+                        TASK_PRIORITY,
+                        &task2_handle
+                        );
 
      //退出临界区
    taskEXIT_CRITICAL();
@@ -105,4 +116,14 @@ void vApplicationMallocFailedHook(void)
     {
     }
 }
-
+//栈溢出钩子:任务栈用完了,停在这里能立刻知道是哪个任务
+//(configCHECK_FOR_STACK_OVERFLOW=2 时 FreeRTOS 会调用它)
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
+{
+    (void)xTask;
+    (void)pcTaskName;
+    taskDISABLE_INTERRUPTS();
+    for( ; ; )
+    {
+    }
+}
