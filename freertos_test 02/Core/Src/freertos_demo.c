@@ -1,125 +1,108 @@
-
-#include "FreeRTOS.h"
-#include "task.h"
 #include "freertos_demo.h"
-#include "stm32f1xx_hal.h"
-#include "usart.h"
-//å¯åŠ¨æ–‡ä»¶çš„é…ç½®
-#define TASK_STACK 128
-#define TASK_PRIORITY 1
-TaskHandle_t start_task_handle;
-void task_start(void*pv);
+#include "key.h"
+#include "gpio.h"
+#include <stdio.h>
 
-//ä»»åŠ¡1çš„é…ç½®
-#define TASK1_STACK 128
-#define TASK1_PRIORITY 2
-TaskHandle_t task1_handle;
-void task1(void*pv);
+/*
+ * Á·Ï°¶ş Ò»¸öÈÎÎñ °´ÏÂ°´¼ü¹Ø±ÕÖĞ¶Ï freertos¹ÜÀíµÄÊÇ5-15£¬Á½¸ö¶¨Ê±Æ÷ÖĞ¶Ï Ò»¸öÖĞ¶Ï4 Ò»¸ö6
+ */
 
-//ä»»åŠ¡2çš„é…ç½®
-#define TASK2_STACK 128
-#define TASK2_PRIORITY 3
-TaskHandle_t task2_handle;
-void task2(void*pv);
+#define TASK_STACK_DEPTH 128//Õ»Éî¶È128×Ö   128*4×Ö½Ú
+#define TASK_PRIORITY 1//ÈÎÎñÓÅÏÈ¼¶
 
-//ä»»åŠ¡3çš„é…ç½®
-#define TASK3_STACK 128
-#define TASK3_PRIORITY 4
-TaskHandle_t task3_handle;
-void task3(void*pv);
+//ÈÎÎñ¾ä±ú
+TaskHandle_t task1_handle=NULL;
 
+TaskHandle_t task_start_handle=NULL;
 
-
-
-
-
-void FreeRtos_Start(void)
+//ÈÎÎñÒ»
+void task1(void *pvParameters)
 {
-    //1.åˆ›å»ºä¸€ä¸ªå¯åŠ¨å‡½æ•°
-     xTaskCreate( (TaskFunction_t) task_start,
-                             (char *)  "task_start", 
-                             (configSTACK_DEPTH_TYPE) TASK_STACK,
-                            (void *) NULL,
-                            (UBaseType_t) TASK_PRIORITY,
-                            (TaskHandle_t *) &start_task_handle );
-    //2.å¯åŠ¨è°ƒåº¦å™¨ï¼Œä¼šè‡ªåŠ¨åˆ›å»ºç©ºé—²å‡½æ•°
+    Key_Event_t evt;              /* ÉùÃ÷±ØĞë·Åº¯Êı¿ªÍ·£¨armcc Ä¬ÈÏ C90 ¹æ¾Ø£© */
+
+    for (;;)
+    {
+        Key_Scan();
+
+        evt = key_evt;            /* 1. È¡×ß£º¿½±´µ½¾Ö²¿±äÁ¿ */
+        if (evt != KEY_NONE)
+        {
+            key_evt = KEY_NONE;   /* 2. Á¢¿ÌÇåÁã¡ª¡ªÖ»´ËÒ»´¦£¬ÈÎºÎÊÂ¼ş¶¼Â©²»µô */
+
+           // printf("evt=%d\r\n", evt);
+
+            switch (evt)          /* 3. ´¦ÀíµÄÊÇ¾Ö²¿¸±±¾ evt£¬²»ÊÇ key_evt */
+            {
+            case KEY_SHORT:
+                printf("open interrupt\r\n");
+                portENABLE_INTERRUPTS();
+                break;
+            case KEY_LONG:
+            printf("close interrupt\r\n");
+                portDISABLE_INTERRUPTS();
+                break;
+            default:
+                break;            /* KEY_UP/KEY_DOWN ´òÒ»ĞĞ evt ¾Í¹»ÁË */
+            }
+        }
+    }
+}
+
+//Õ»Òç³ö¹³×Ó:ÈÎÎñÕ»ÓÃÍêÁË,Í£ÔÚÕâÀïÄÜÁ¢¿ÌÖªµÀÊÇÄÄ¸öÈÎÎñ
+//(configCHECK_FOR_STACK_OVERFLOW=2 Ê± FreeRTOS »áµ÷ÓÃËü)
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
+{
+    (void)xTask;
+    (void)pcTaskName;
+    taskDISABLE_INTERRUPTS();
+    for( ; ; )
+    {
+    }
+}
+
+//ÈÎÎñËÄ:Õâ¸öÈÎÎñÓÃÀ´Æô¶¯Èı¸öÈÎÎñ,ÓÃÍê¾ÍÉ¾
+void task_start(void*pvParameters)
+{
+
+    //½øÈëÁÙ½çÇø
+    taskENTER_CRITICAL();
+    xTaskCreate(task1,
+                        "task1",
+                        TASK_STACK_DEPTH,
+                        NULL,
+                        TASK_PRIORITY,
+                        &task1_handle
+                        );
+
+
+     //ÍË³öÁÙ½çÇø
+   taskEXIT_CRITICAL();
+    //É¾³ıÈÎÎñ×Ô¼º
+   vTaskDelete(NULL);
+
+}
+
+void freertos_start(void)
+{
+    xTaskCreate(task_start,
+                            "task_start",
+                             TASK_STACK_DEPTH,
+                            NULL,
+                            TASK_PRIORITY,
+                            &task_start_handle
+                            );
+    //2.Æô¶¯µ÷¶ÈÆ÷
     vTaskStartScheduler();
 }
 
-void task_start(void*pv)
+
+//¶Ñ·ÖÅäÊ§°Ü¹³×Ó:¶Ñ²»¹»Ê±Í£ÔÚÕâÀï,ÅäºÏµ÷ÊÔÆ÷ÄÜÁ¢¿Ì¶¨Î»
+//(configUSE_MALLOC_FAILED_HOOK=1 Ê± FreeRTOS »áµ÷ÓÃËü)
+void vApplicationMallocFailedHook(void)
 {
-    taskENTER_CRITICAL();
-
-     xTaskCreate( (TaskFunction_t) task1,
-                        (char *)  "task1", 
-                        (configSTACK_DEPTH_TYPE) TASK1_STACK,
-                        (void *) NULL,
-                        (UBaseType_t) TASK1_PRIORITY,
-                        (TaskHandle_t *) &task1_handle );
-    xTaskCreate( (TaskFunction_t) task2,
-                        (char *)  "task2", 
-                        (configSTACK_DEPTH_TYPE) TASK2_STACK,
-                        (void *) NULL,
-                        (UBaseType_t) TASK2_PRIORITY,
-                        (TaskHandle_t *) &task2_handle );
-    xTaskCreate( (TaskFunction_t) task3,
-                        (char *)  "task3", 
-                        (configSTACK_DEPTH_TYPE) TASK3_STACK,
-                        (void *) NULL,
-                        (UBaseType_t) TASK3_PRIORITY,
-                        (TaskHandle_t *) &task3_handle );
-
-    taskEXIT_CRITICAL();
-    vTaskDelete(NULL);
-     
-}
-
-
-//LED0 500msåè½¬
-void task1(void*pv)
-{
-   while (1)
-   {
-    printf("task1 \r\n");
-    HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_5);
-    vTaskDelay(500);
-   }
-   
-   
-}
-
-//LED1 500msåè½¬
-void task2(void*pv)
-{
-    while (1)
-   {
-    printf("task2 \r\n");
-    HAL_GPIO_TogglePin(GPIOE,GPIO_PIN_5);
-    vTaskDelay(500);
-   }
-   
-   
-}
-
-//KEY0æŒ‰é”®æŒ‰ä¸‹ ä»»åŠ¡1ç»“æŸ
-char task_info[500];
-void task3(void*pv)
-{
-    while(1)
+    taskDISABLE_INTERRUPTS();
+    for( ; ; )
     {
-        HAL_Delay(10);
-        if(HAL_GPIO_ReadPin(KEY0_GPIO_Port, KEY0_Pin) == GPIO_PIN_RESET)
-        {
-            printf("suspend task1!\n\r");
-            vTaskSuspend(task1_handle);
-        }
-        if(HAL_GPIO_ReadPin(KEY0_GPIO_Port, KEY1_Pin) == GPIO_PIN_RESET)
-        {
-            printf("resume task1!\n\r");
-           vTaskResume(task1_handle);
-        }
-         vTaskList(task_info);
-        printf("%s\r\n",task_info);
     }
 }
 

@@ -48,7 +48,7 @@
 #define configMINIMAL_STACK_SIZE	( ( unsigned short ) 128 )
 #define configTOTAL_HEAP_SIZE		( ( size_t ) ( 17 * 1024 ) )
 #define configMAX_TASK_NAME_LEN		( 16 )
-#define configUSE_TRACE_FACILITY	0
+#define configUSE_TRACE_FACILITY	1
 #define configUSE_16_BIT_TICKS		0   //TickType_t 类型的变量记录了系统过去的节拍次数
 #define configIDLE_SHOULD_YIELD		1
 
@@ -84,6 +84,32 @@ NVIC value of 255. */
 #define vPortSVCHandler     SVC_Handler
 #define INCLUDE_xTaskGetSchedulerState   1
 
+
+
+/* 开启任务挂起与恢复的功能 */
+//#define INCLUDE_vTaskSuspend                1      默认已有 是1
+#define INCLUDE_xResumeFromISR              1    
+
+/* 开启跟踪task信息 */
+//#define configUSE_TRACE_FACILITY            1    默认是0 改成1
+#define configUSE_STATS_FORMATTING_FUNCTIONS 1
+
+/* 断言失败时停在这里，配合调试器断点能立刻抓到现场。
+   不定义的话 FreeRTOS.h 默认给的是空宏，所有内部检查(栈溢出/
+   重复释放/优先级非法)全部静默失效，只会在运行时表现为玄学死机。
+   这里用 portDISABLE_INTERRUPTS() 而不是 taskDISABLE_INTERRUPTS()，
+   因为 portable.h 在 FreeRTOS.h 里就被包含了，展开时不会有依赖问题。 */
+#define configASSERT( x )   if((x) == 0) { portDISABLE_INTERRUPTS(); for( ; ; ) ; }
+
+/* 栈溢出检查：任务栈用 0xa5 填充，任务切换时检查标记是否还在 */
+#define configCHECK_FOR_STACK_OVERFLOW   2
+/* vApplicationStackOverflowHook 的原型 task.h 里已经有了(第1647行)，
+   这里不要重复声明 —— FreeRTOSConfig.h 比 task.h 先被包含，
+   此时 TaskHandle_t 还没定义，声明会编译失败。 */
+
+/* 堆分配失败钩子：堆不够时立刻能知道，而不是默默返回 NULL */
+#define configUSE_MALLOC_FAILED_HOOK   1
+/* vApplicationMallocFailedHook 的原型 portable.h 里已经有了，这里不用重复声明 */
 
 
 

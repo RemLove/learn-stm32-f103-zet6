@@ -3,6 +3,10 @@
 *.uvgui.*
 *.scvd
 *.uvoptx
+# Keil 预处理中间文件：输出目录名 = TargetName 时会落在工程目录里（如 freertos_test 01/）
+*.__i
+*._ia
+*.i
 # 注意：*.uvprojx 是 Keil 工程文件（工程入口），必须提交，不要忽略
 *.uvopt
 *.uvproj

@@ -18,11 +18,13 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
 #include "freertos_demo.h"
 /* USER CODE END Includes */
 
@@ -87,15 +89,14 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_TIM2_Init();
+  MX_TIM3_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start_IT(&htim2);
+  HAL_TIM_Base_Start_IT(&htim3);
 
-
-  
-  FreeRtos_Start();
-  
-
-
+  freertos_start();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -170,7 +171,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-
+   if(htim->Instance==TIM2)
+  {
+    printf("tim2 priority 4\r\n");
+  }
+  else if(htim->Instance==TIM3)
+  {
+    printf("tim3 priority 6\r\n");
+  }
   /* USER CODE END Callback 1 */
 }
 
