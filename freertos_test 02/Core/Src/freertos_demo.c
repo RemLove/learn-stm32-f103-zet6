@@ -51,12 +51,36 @@ void task1(void *pvParameters)
 //任务二 获取任务一的状态
 void task2(void *pvParameters)
 {
-    int ret=0;
-    ret = uxTaskPriorityGet(task1_handle);
-    printf("%d\r\n",ret);
+    //获取任务一的任务优先级 打印 再设置优先级 打印
+    UBaseType_t task_priorty=0;
+    task_priorty = uxTaskPriorityGet(task1_handle);
+    printf("%d\r\n",task_priorty);
     vTaskPrioritySet(task1_handle,4);
-    ret = uxTaskPriorityGet(task1_handle);
-    printf("%d\r\n",ret);
+    task_priorty = uxTaskPriorityGet(task1_handle);
+    printf("%d\r\n",task_priorty);
+
+    //获取任务数量并打印
+    UBaseType_t task_number = uxTaskGetNumberOfTasks();
+    printf("%d\r\n",task_number);
+
+    //获取所有任务状态
+    TaskStatus_t task_arr[10]={0};
+    uxTaskGetSystemState(task_arr,task_number,NULL);//最后一个参数是运行时间
+    for (uint8_t i = 0; i < task_number; i++)
+    {
+        printf("%s\t\t%d\t\t%d\t\t%d\t\t%d\t\t",
+               task_arr[i].pcTaskName,
+               task_arr[i].xTaskNumber,
+               task_arr[i].eCurrentState,
+               task_arr[i].uxCurrentPriority,
+               task_arr[i].uxBasePriority
+        );
+    }
+    //获取单个任务信息
+    TaskStatus_t task1_status;//保存获取到的信息
+    BaseType_t task1_freestackspace;
+    vTaskGetInfo(task1_handle,&task1_status,task1_freestackspace,eInvalid);
+    
     for (;;)
     {
         
@@ -107,23 +131,4 @@ void freertos_start(void)
 }
 
 
-//堆分配失败钩子:堆不够时停在这里,配合调试器能立刻定位
-//(configUSE_MALLOC_FAILED_HOOK=1 时 FreeRTOS 会调用它)
-void vApplicationMallocFailedHook(void)
-{
-    taskDISABLE_INTERRUPTS();
-    for( ; ; )
-    {
-    }
-}
-//栈溢出钩子:任务栈用完了,停在这里能立刻知道是哪个任务
-//(configCHECK_FOR_STACK_OVERFLOW=2 时 FreeRTOS 会调用它)
-void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
-{
-    (void)xTask;
-    (void)pcTaskName;
-    taskDISABLE_INTERRUPTS();
-    for( ; ; )
-    {
-    }
-}
+
