@@ -1,74 +1,62 @@
 #include "freertos_demo.h"
 #include "key.h"
-#include "gpio.h"
 #include <stdio.h>
 #include "queue.h"
 #include "semphr.h"
-/*
- * Á·Ï°ËÄ ¼ÆÊıĞÅºÅÁ¿£ºKEY0 ¶Ì°´ Give ĞÅºÅÁ¿+1£¬³¤°´ Take ĞÅºÅÁ¿-1£¨ÉÏÏŞ10£©
- */
+#include "event_groups.h"
 
-#define TASK_STACK_DEPTH 128//Õ»Éî¶È128×Ö   128*4×Ö½Ú
-#define TASK_PRIORITY 1//ÈÎÎñÓÅÏÈ¼¶
 
-//ÈÎÎñ¾ä±ú
+#define TASK_STACK_DEPTH 128
+#define TASK_PRIORITY 1
+
+#define EVENT_0 1<<0
+#define EVENT_4 1<<4
+
 TaskHandle_t task1_handle=NULL;
 TaskHandle_t task2_handle=NULL;
-QueueHandle_t sem_handle=NULL;
+EventGroupHandle_t event_group_handel=NULL;
 TaskHandle_t task_start_handle=NULL;
 
 UBaseType_t count=0;
 
 void task1(void *pvParameters)
 {
-    Key_Event_t evt;              /* ÉùÃ÷±ØĞë·Åº¯Êı¿ªÍ·£¨armcc Ä¬ÈÏ C90 ¹æ¾Ø£© */
+    Key_Event_t evt;              
     for (;;)
     {
         Key_Scan();
 
-        evt = key_evt;            /* 1. È¡×ß£º¿½±´µ½¾Ö²¿±äÁ¿ */
+        evt = key_evt;            
         if (evt != KEY_NONE)
         {
-            key_evt = KEY_NONE;   /* 2. Á¢¿ÌÇåÁã¡ª¡ªÖ»´ËÒ»´¦£¬ÈÎºÎÊÂ¼ş¶¼Â©²»µô */
-            switch (evt)          /* 3. ´¦ÀíµÄÊÇ¾Ö²¿¸±±¾ evt£¬²»ÊÇ key_evt */
+            key_evt = KEY_NONE;   
+            switch (evt)         
             {
-            case KEY_SHORT://¶Ì°´Ò»´ÎÊÍ·ÅÒ»´ÎĞÅºÅÁ¿ ĞÅºÅÁ¿+1 ³¤°´Ò»´Î »ñÈ¡Ò»´ÎĞÅºÅÁ¿ ĞÅºÅÁ¿-1
-                xSemaphoreGive(sem_handle);
-                count = uxSemaphoreGetCount(sem_handle);
-                printf("¿ÉÓÃĞÅºÅÁ¿Îª:%d\r\n",count);
+            case KEY_SHORT:
+                xEventGroupSetBits(event_group_handel,EVENT_0);\
+                printf("bit0 set 1\r\n");
                 break;
             case KEY_LONG:
-                xSemaphoreTake(sem_handle,0);
-                count = uxSemaphoreGetCount(sem_handle);
-                printf("¿ÉÓÃĞÅºÅÁ¿Îª:%d\r\n",count);
+                xEventGroupSetBits(event_group_handel,EVENT_4);
+                printf("bit4 set 1\r\n");
                 break;
             default:
-                break;            /* KEY_UP/KEY_DOWN Âäµ½ default£¬Ö±½ÓºöÂÔ */
+                break;            
             }
         }
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
-//Ã¿Ò»Ãë»ñÈ¡µ±Ç°¿ÉÓÃĞÅºÅÁ¿
+
 void task2(void *pvParameters)
 {
-    for (;;)
-    {
-        count = uxSemaphoreGetCount(sem_handle);
-        printf("¿ÉÓÃĞÅºÅÁ¿Îª:%d\r\n",count);
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-
+    EventBits_t evt=0;
+    xEventGroupWaitBits(event_group_handel,EVENT_0|EVENT_4,pdTRUE,pdTRUE,portMAX_DELAY);
+    printf("%#x\r\n",evt);
 }
-
-
-
-//ÈÎÎñÈı:Õâ¸öÈÎÎñÓÃÀ´Æô¶¯Á½¸öÈÎÎñ,ÓÃÍê¾ÍÉ¾
 void task_start(void*pvParameters)
 {
-
-    //½øÈëÁÙ½çÇø
     taskENTER_CRITICAL();
     xTaskCreate(task1,
                         "task1",
@@ -86,27 +74,15 @@ void task_start(void*pvParameters)
                         );
                    
    taskEXIT_CRITICAL();
-   //É¾³ıÈÎÎñ×Ô¼º
+
    vTaskDelete(NULL);
 
 }
 
 void freertos_start(void)
 {
-    //´´½¨ĞÅºÅÁ¿
-    sem_handle = xSemaphoreCreateCounting(10,0);
-    if(sem_handle==NULL)
-    {
-        printf("´´½¨ĞÅºÅÁ¿Ê§°Ü\r\n");
-    }
-    else 
-    {
-        count = uxSemaphoreGetCount(sem_handle);
-        printf("¿ÉÓÃĞÅºÅÁ¿Îª:%d\r\n",count);
-
-        printf("´´½¨ĞÅºÅÁ¿³É¹¦\r\n");
-    }
-
+   //åˆ›å»ºäº‹ä»¶æ ‡å¿—ç»„
+   event_group_handel = xEventGroupCreate();
     xTaskCreate(task_start,
                             "task_start",
                              TASK_STACK_DEPTH,
@@ -114,7 +90,7 @@ void freertos_start(void)
                             TASK_PRIORITY,
                             &task_start_handle
                             );
-    //2.Æô¶¯µ÷¶ÈÆ÷
+    //2.ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     vTaskStartScheduler();
 }
 

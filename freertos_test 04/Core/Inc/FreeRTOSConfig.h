@@ -121,5 +121,7 @@ to exclude the API function. */
 #define  configUSE_COUNTING_SEMAPHORES  1
 #define  configSUPPORT_DYNAMIC_ALLOCATION 1
 
+#define configUSE_QUEUE_SETS 1
+
 #endif /* FREERTOS_CONFIG_H */
 
