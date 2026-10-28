@@ -121,7 +121,10 @@ to exclude the API function. */
 #define  configUSE_COUNTING_SEMAPHORES  1
 #define  configSUPPORT_DYNAMIC_ALLOCATION 1
 
-#define configUSE_QUEUE_SETS 1
+/* 事件标志组不需要任何开关：V10.5.1 的 event_groups.c 是无条件编译的
+   （configUSE_EVENT_GROUPS 那个宏是 FreeRTOS V11 才加的）。
+   这里原来写的 configUSE_QUEUE_SETS 是"队列集"的开关，跟事件组无关，
+   开了只会把 queue.c 里那堆队列集函数也编进来，白占 flash。练队列集时再开。 */
 
 #endif /* FREERTOS_CONFIG_H */
 

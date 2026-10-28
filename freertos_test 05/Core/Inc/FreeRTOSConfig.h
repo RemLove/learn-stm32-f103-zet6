@@ -120,7 +120,11 @@ to exclude the API function. */
 
 #define configUSE_TIMERS    1
 #define configTIMER_TASK_PRIORITY 2
-#define configTIMER_QUEUE_LENGTH 1
+/* 定时器命令队列长度。原来是 1，只有 1 个槽：task1 里连续发两条命令时，
+   第二条会阻塞等待守护任务腾槽。守护任务优先级 2 > task1 的 1 能解阻塞，
+   但一旦把守护优先级调到更低的数字以下，xTimerStart 传入的 portMAX_DELAY
+   就会真的永久死等。给 5 留余量。 */
+#define configTIMER_QUEUE_LENGTH 5
 #define configTIMER_TASK_STACK_DEPTH 256
 #endif /* FREERTOS_CONFIG_H */
 

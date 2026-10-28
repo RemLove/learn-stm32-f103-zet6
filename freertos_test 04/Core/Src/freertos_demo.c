@@ -1,98 +1,123 @@
 #include "freertos_demo.h"
 #include "key.h"
 #include <stdio.h>
-#include "queue.h"
-#include "semphr.h"
 #include "event_groups.h"
 
 
-#define TASK_STACK_DEPTH 128
+/* 128 ×Ö = 512 ×Ö½Ú¡£ÀïÃæÒªÅÜ printf£¨vfprintf Í¨³£³Ô 200~400 ×Ö½ÚÕ»£©£¬
+   ÔÙµþÉÏº¯Êýµ÷ÓÃÁ´£¬configCHECK_FOR_STACK_OVERFLOW=2 ºÜÈÝÒ×Ò»°´¾Í½ø¹³×Ó¡£
+   ¸ø 256 ×Ö = 1KB£¬Ö»¶à»¨ 2KB ¶Ñ£¬F103ZET6 µÄ 17KB heap ¿¸µÃ×¡¡£ */
+#define TASK_STACK_DEPTH 256
 #define TASK_PRIORITY 1
 
-#define EVENT_0 1<<0
-#define EVENT_4 1<<4
+/* ºêÀïµÄÎ»ºÅ±ØÐë¼ÓÀ¨ºÅ¡£ÏÖÔÚÖ»ÓÃÔÚ xEventGroupSetBits / WaitBits µÄ²ÎÊýÀï£¬
+   ¼´Ê¹²»¼ÓÒ²ÅöÇÉÃ»ÊÂ£»µ«ÄÄÌìÐ´³É EVENT_4 | 3 ÕâÖÖ£¬1<<4|3 »á±ä³É 1<<(4|3)¡£ */
+#define EVENT_0 (1u << 0)
+#define EVENT_4 (1u << 4)
 
-TaskHandle_t task1_handle=NULL;
-TaskHandle_t task2_handle=NULL;
-EventGroupHandle_t event_group_handel=NULL;
-TaskHandle_t task_start_handle=NULL;
-
-UBaseType_t count=0;
+TaskHandle_t task1_handle = NULL;
+TaskHandle_t task2_handle = NULL;
+EventGroupHandle_t event_group_handle = NULL;   /* Ô­ handel Æ´´í£¬Ë³ÊÖ¸Ä */
+TaskHandle_t task_start_handle = NULL;
 
 void task1(void *pvParameters)
 {
-    Key_Event_t evt;              
+    Key_Event_t evt;
+
+    (void)pvParameters;
+
     for (;;)
     {
         Key_Scan();
 
-        evt = key_evt;            
+        evt = key_evt;
         if (evt != KEY_NONE)
         {
-            key_evt = KEY_NONE;   
-            switch (evt)         
+            key_evt = KEY_NONE;
+            switch (evt)
             {
             case KEY_SHORT:
-                xEventGroupSetBits(event_group_handel,EVENT_0);\
+                xEventGroupSetBits(event_group_handle, EVENT_0);
                 printf("bit0 set 1\r\n");
                 break;
+
             case KEY_LONG:
-                xEventGroupSetBits(event_group_handel,EVENT_4);
+                xEventGroupSetBits(event_group_handle, EVENT_4);
                 printf("bit4 set 1\r\n");
                 break;
+
             default:
-                break;            
+                break;
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(500));
+
+        /* °´¼üÉ¨ÃèÖÜÆÚ¡£Ô­À´ 500ms Ì«³¤£ºKey_Scan ÄÚ²¿Ïû¶¶ÊÇ 50ms£¬
+           Ò»´Î¶Ì°´"°´ÏÂ 100ms ÔÙËÉÊÖ"ºÜ¿ÉÄÜÕû¶ÎÂäÔÚÁ½´ÎÉ¨ÃèÖ®¼ä ¡ª¡ª Ö±½ÓÂ©¼ì¡£
+           20ms Ò»´Î×ã¹»£¬CPU ¼¸ºõ²»Õ¼¡£ */
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
 
-
 void task2(void *pvParameters)
 {
-    EventBits_t evt=0;
-    xEventGroupWaitBits(event_group_handel,EVENT_0|EVENT_4,pdTRUE,pdTRUE,portMAX_DELAY);
-    printf("%#x\r\n",evt);
+    EventBits_t evt;
+
+    (void)pvParameters;
+
+    /* ÈÎÎñº¯Êý¾ø²»ÄÜ return£º·µ»ØµÈÓÚ°ÑÕ»¶¥µÄÏÖ³¡½á¹¹µ±·µ»ØµØÖ·µ¯³öÈ¥£¬
+       »ù±¾¾ÍÊÇ HardFault¡£ËùÒÔÍâÃæ±ØÐëÌ× for(;;)¡£ */
+    for (;;)
+    {
+        /* ²ÎÊý 3 clearOnExit = pdTRUE£º·µ»ØÊ±°ÑÆ¥ÅäµÄÎ»ÇåÁã£¬µÈÏÂÒ»ÂÖÖØÐÂÔÜ¡£
+           ²ÎÊý 4 waitForAllBits = pdTRUE£ºbit0 ºÍ bit4 ¶¼ÖÃÎ»²Å·µ»Ø¡£
+              ¡ú Ö»°´¶Ì°´£¨Ö»ÖÃ bit0£©²»»áÐÑ£¬±ØÐë"¶Ì°´Ò»´Î + ³¤°´Ò»´Î"²ÅÐÑÒ»´Î¡£
+              ¡ú ÏëÁ·"ÈÎÒ»Î»¾Í»½ÐÑ"£¬°ÑÕâÀï¸Ä³É pdFALSE¡£ */
+        evt = xEventGroupWaitBits(event_group_handle,
+                                  EVENT_0 | EVENT_4,
+                                  pdTRUE,
+                                  pdTRUE,
+                                  portMAX_DELAY);
+
+        /* ±ØÐë½Ó·µ»ØÖµ£ºevt ²ÅÊÇ"ÐÑÀ´Ê±ÄÄÐ©Î»ÊÇ 1"£¬
+           Ô­À´ÄÇ¾äÖ»µ÷ÓÃ²»½ÓÊÕ£¬evt Ò»Ö±ÊÇ³õÊ¼»¯Ê±µÄ 0£¬´òÓ¡ºãÎª 0¡£ */
+        printf("wait bits = %#x\r\n", (unsigned int)evt);
+    }
 }
-void task_start(void*pvParameters)
+
+void task_start(void *pvParameters)
 {
-    taskENTER_CRITICAL();
-    xTaskCreate(task1,
-                        "task1",
-                        TASK_STACK_DEPTH,
-                        NULL,
-                        TASK_PRIORITY,
-                        &task1_handle
-                        );
-     xTaskCreate(task2,
-                        "task2",
-                        TASK_STACK_DEPTH,
-                        NULL,
-                        TASK_PRIORITY,
-                        &task2_handle
-                        );
-                   
-   taskEXIT_CRITICAL();
+    (void)pvParameters;
 
-   vTaskDelete(NULL);
+    /* ÕâÀïµÄÁÙ½çÇøÆäÊµ¿ÉÒÔÈ¥µô£ºxTaskCreate ÄÚ²¿×Ô¼º»á½øÁÙ½çÇø£¨¿ÉÇ¶Ì×£©£¬
+       ÍâÃæÔÙ°üÒ»²ãÖ»ÊÇ°ÑÈý´Î memset 512 ×Ö½ÚÕ»µÄÊ±¼äÒ²Ëã½ø¹ØÖÐ¶ÏÀï¡£ */
+    xTaskCreate(task1, "task1", TASK_STACK_DEPTH, NULL, TASK_PRIORITY, &task1_handle);
+    xTaskCreate(task2, "task2", TASK_STACK_DEPTH, NULL, TASK_PRIORITY, &task2_handle);
 
+    if ((task1_handle == NULL) || (task2_handle == NULL))
+    {
+        printf("task create failed\r\n");
+    }
+
+    vTaskDelete(NULL);       /* ½¨Íê¾Í×ÔÉ¾£¬TCB ºÍÕ»ÓÉ IDLE ÈÎÎñ»ØÊÕ */
 }
 
 void freertos_start(void)
 {
-   //åˆ›å»ºäº‹ä»¶æ ‡å¿—ç»„
-   event_group_handel = xEventGroupCreate();
-    xTaskCreate(task_start,
-                            "task_start",
-                             TASK_STACK_DEPTH,
-                            NULL,
-                            TASK_PRIORITY,
-                            &task_start_handle
-                            );
-    //2.ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    event_group_handle = xEventGroupCreate();
+    if (event_group_handle == NULL)
+    {
+        printf("event group create failed\r\n");
+        return;              /* ¶Ñ²»¹»£¬Æð²»À´¾Í±ðÍùÏÂ×ß */
+    }
+
+    xTaskCreate(task_start, "task_start", TASK_STACK_DEPTH, NULL,
+                TASK_PRIORITY, &task_start_handle);
+
     vTaskStartScheduler();
+
+    /* ¶Ñ²»¹»Ê± vTaskStartScheduler »áÖ±½Ó·µ»Ø£¬²»Ð´ÕâÐÐ´úÂëµÄ»°
+       main ½ø¿Õ while(1)£¬ÏÖÏóÊÇ"°å×ÓÏñËÀÁË"£¬·Ö²»ÇåÊÇÄÄ¸öÔ­Òò¡£ */
+    while (1)
+    {
+    }
 }
-
-
-

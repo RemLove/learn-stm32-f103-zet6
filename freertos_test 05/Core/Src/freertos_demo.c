@@ -5,122 +5,160 @@
 #include "task.h"
 #include "timers.h"
 
-#define TASK_STACK_DEPTH 128
+/* 128 ×Ö = 512 ×Ö½Ú£¬ÀïÃæÅÜ printf£¨vfprintf Òª 200~400 ×Ö½ÚÕ»£©Ì«½ô£¬
+   configCHECK_FOR_STACK_OVERFLOW=2 ÒÑ¾­¿ª×Å£¬ÈİÒ×Ò»°´¾Í½ø¹³×ÓËÀÑ­»·¡£
+   ¸ø 256 ×Ö = 1KB¡£ */
+#define TASK_STACK_DEPTH 256
 #define TASK_PRIORITY 1
 
 
-TaskHandle_t task1_handle=NULL;
-TaskHandle_t task2_handle=NULL;
+TaskHandle_t task1_handle = NULL;
+TaskHandle_t task2_handle = NULL;
 
-TimerHandle_t timer1_handle=NULL;
-TimerHandle_t timer2_handle=NULL;
+TimerHandle_t timer1_handle = NULL;
+TimerHandle_t timer2_handle = NULL;
 
-TaskHandle_t task_start_handle=NULL;
+TaskHandle_t task_start_handle = NULL;
+
+/* ¶¨Ê±Æ÷»Øµ÷ÀïÀÛ¼ÓµÄ¼ÆÊı¡£
+   »Øµ÷ÅÜÔÚ"¶¨Ê±Æ÷ÊØ»¤ÈÎÎñ"µÄÉÏÏÂÎÄÀï£¬ºÍ±ğ´¦µÄ´úÂëÊÇ²»Í¬ÈÎÎñ£¬
+   ¼Ó volatile ÈÃ±àÒëÆ÷Ã¿´Î¶¼´ÓÄÚ´æ¶Á£¬²»»á±»ÓÅ»¯³É¼Ä´æÆ÷»º´æ¡£ */
+static volatile uint32_t s_timer1_cnt = 0;
+static volatile uint32_t s_timer2_cnt = 0;
 
 
 void task1(void *pvParameters)
 {
-    Key_Event_t evt;          
+    Key_Event_t evt;
+
+    (void)pvParameters;
+
     for (;;)
     {
         Key_Scan();
-        evt = key_evt;            
+        evt = key_evt;
         if (evt != KEY_NONE)
         {
-            key_evt = KEY_NONE;   
-            switch (evt)         
+            key_evt = KEY_NONE;
+            switch (evt)
             {
             case KEY_SHORT:
-                xTimerStart(timer1_handle,portMAX_DELAY);
-               printf("å¼€å¯timer1\r\n");
+                /* µÚ 2 ¸ö²ÎÊıÊÇ"ÃüÁîÈë¶ÓµÈ´ıÊ±¼ä"£¬²»ÊÇ¶¨Ê±Æ÷ÖÜÆÚ£¡
+                   ¶ÓÁĞÂúÊ±×î¶àµÈ 100ms ¾Í·ÅÆú£¬²»ÒªÓÃ portMAX_DELAY ËÀµÈ¡£ */
+                xTimerStart(timer1_handle, pdMS_TO_TICKS(100));
+                printf("¿ªÆô timer1£¨µ¥´Î 500ms£¬Ö»ÌøÒ»´Î£©\r\n");
                 break;
+
             case KEY_LONG:
-            xTimerStart(timer2_handle,portMAX_DELAY);
-                printf("å¼€å¯timer2\r\n");
+                xTimerStart(timer2_handle, pdMS_TO_TICKS(100));
+                printf("¿ªÆô timer2£¨ÖÜÆÚ 500ms£¬Ò»Ö±Ìø£©\r\n");
                 break;
+
             default:
-                break;         
+                break;
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(50));
+
+        /* °´¼üÉ¨ÃèÖÜÆÚ 50ms -> 20ms£¬±È Key_Scan ÄÚ²¿ 50ms Ïû¶¶¸ü¿ì£¬±ÜÃâÂ©¼ì */
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
 
 void task2(void *pvParameters)
 {
-    uint32_t j=0;
+    uint32_t got;
+    uint32_t notify_total = 0;
+
+    (void)pvParameters;
+
     for (;;)
     {
-        printf("task2æ­£åœ¨è¿è¡Œ\r\n");
-        xTaskNotifyWait(0x00000000,0xffffffff,&j,portMAX_DELAY);
-        printf("%d\r\n",j);
-        vTaskDelay(pdMS_TO_TICKS(50));
+        /* ulTaskNotifyTake(pdTRUE, ...) ÊÇ"ÈÎÎñÍ¨Öª"Àï×îºÃÓÃµÄÒ»¸ö£º
+             pdTRUE      = È¡Íê°ÑÍ¨ÖªÖµÇåÁã£¨µ±¶şÖµ/¼ÆÊıĞÅºÅÁ¿ÓÃ£©
+             µÚ 2 ¸ö²ÎÊı = ×î¶àµÈ¶à¾Ã
+           ·µ»Ø 0 ±íÊ¾µÈ³¬Ê±ÁË£¬·Ç 0 ±íÊ¾ÄÃµ½ÁË¼¸¸öÍ¨Öª¡£
+           ÕâÀïÓÃ 500ms ³¬Ê±£º¼´Ê¹Ã»ÈË·¢Í¨Öª£¬Ò²ÄÜÖÜÆÚĞÔ°Ñ¼ÆÊıÆ÷´ò³öÀ´£¬
+           ·½±ãÄãÈ·ÈÏ"¶¨Ê±Æ÷µ½µ×ÅÜÃ»ÅÜ"¡£ */
+        got = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(500));
+        if (got != 0)
+        {
+            notify_total += got;
+        }
+
+        printf("notify=%lu  timer1=%lu  timer2=%lu\r\n",
+               (unsigned long)notify_total,
+               (unsigned long)s_timer1_cnt,
+               (unsigned long)s_timer2_cnt);
     }
 }
 
-void task_start(void*pvParameters)
+void task_start(void *pvParameters)
 {
+    (void)pvParameters;
 
+    xTaskCreate(task1, "task1", TASK_STACK_DEPTH, NULL, TASK_PRIORITY, &task1_handle);
+    xTaskCreate(task2, "task2", TASK_STACK_DEPTH, NULL, TASK_PRIORITY, &task2_handle);
 
-    taskENTER_CRITICAL();
-    xTaskCreate(task1,
-                        "task1",
-                        TASK_STACK_DEPTH,
-                        NULL,
-                        TASK_PRIORITY,
-                        &task1_handle
-                        );
-    
-    xTaskCreate(task2,
-                        "task2",
-                        TASK_STACK_DEPTH,
-                        NULL,
-                        TASK_PRIORITY,
-                        &task2_handle
-                        );
+    if ((task1_handle == NULL) || (task2_handle == NULL))
+    {
+        printf("task create failed\r\n");
+    }
 
-   taskEXIT_CRITICAL();
-
-   vTaskDelete(NULL);
-
+    vTaskDelete(NULL);
 }
-uint32_t i=0;
-void (timer1_action)( TimerHandle_t xTimer )
+
+/* ¶¨Ê±Æ÷»Øµ÷¡£×¢Òâ£ºËüÓÉ"¶¨Ê±Æ÷ÊØ»¤ÈÎÎñ"µ÷ÓÃ£¬²»ÊÇÖĞ¶ÏÉÏÏÂÎÄ£¬
+   ËùÒÔ¿ÉÒÔÓÃ xTaskNotifyGive ÕâÀà·Ç FromISR °æ±¾µÄ API£¨²»ÄÜÓÃ»á×èÈûµÄ API£©¡£ */
+static void timer1_action(TimerHandle_t xTimer)
 {
-    i++;
+    (void)xTimer;
+    s_timer1_cnt++;          /* µ¥´Î¶¨Ê±Æ÷£ºµ½µãÖ»½øÀ´Ò»´Î */
 }
-uint32_t j=0;
-void (timer2_action)( TimerHandle_t xTimer )
+
+static void timer2_action(TimerHandle_t xTimer)
 {
-    j++;
+    (void)xTimer;
+    s_timer2_cnt++;          /* ÖÜÆÚ¶¨Ê±Æ÷£ºÃ¿ 500ms ½øÀ´Ò»´Î */
+
+    /* ¹Ø¼ü£º¸ø task2 ·¢Í¨Öª£¬µÈ¼ÛÓÚ"¸øÒ»¸ö¶şÖµĞÅºÅÁ¿"¡£
+       Ô­À´Ã»ÓĞÕâÒ»¾ä£¬task2 ¾ÍÓÀÔ¶×èÈûÔÚ portMAX_DELAY ÉÏÒ»¶¯²»¶¯¡£ */
+    if (task2_handle != NULL)
+    {
+        xTaskNotifyGive(task2_handle);
+    }
 }
+
 void freertos_start(void)
 {
-    //åˆ›å»ºè½¯ä»¶å®šæ—¶å™¨
-    timer1_handle = xTimerCreate( //æ²¡æœ‰é‡è£… åªæº¢å‡ºä¸€æ¬¡
-                            "timer1",
-                            pdMS_TO_TICKS(500),
-                            pdFALSE,
-                            "1",
-                            timer1_action
-                            );
-    timer2_handle = xTimerCreate(//500msæº¢å‡ºä¸€æ¬¡
-                            "timer2",
-                            pdMS_TO_TICKS(500),
-                            pdTRUE,
-                            "1",
-                            timer2_action
-                            );
-    xTaskCreate(task_start,
-                            "task_start",
-                             TASK_STACK_DEPTH,
-                            NULL,
-                            TASK_PRIORITY,
-                            &task_start_handle
-                            );
+    /* µÚ 4 ¸ö²ÎÊı pvTimerID ÊÇ¸øÄã×Ô¼ºÓÃµÄ±êÇ©£¬»Øµ÷Àï¿ÉÓÃ
+       pvTimerGetTimerID(xTimer) È¡³öÀ´Çø·ÖÊÇÄÄ¸ö¶¨Ê±Æ÷¡£
+       Ô­À´Á½¸ö¶¼´«×Ö·û´® "1"£¬±àÒëÆ÷»á°ÑÏàÍ¬×ÖÃæÁ¿ºÏµ½Í¬Ò»µØÖ·£¬
+       Á½¸ö ID ¾ÍÍêÈ«Ò»ÑùÁË£¬Ê§È¥Çø·ÖÒâÒå ¡ª¡ª ÕâÀï¸Ä³É²»Í¬µÄÕûÊı¡£ */
+    timer1_handle = xTimerCreate("timer1",
+                                 pdMS_TO_TICKS(500),
+                                 pdFALSE,          /* pdFALSE = µ¥´Î£¬´¥·¢Ò»´Î¾ÍÍ£ */
+                                 (void *)1,
+                                 timer1_action);
+
+    timer2_handle = xTimerCreate("timer2",
+                                 pdMS_TO_TICKS(500),
+                                 pdTRUE,           /* pdTRUE = ÖÜÆÚ£¬×Ô¶¯ÖØ×° */
+                                 (void *)2,
+                                 timer2_action);
+
+    if ((timer1_handle == NULL) || (timer2_handle == NULL))
+    {
+        printf("timer create failed£¨¶Ñ²»¹»»ò configUSE_TIMERS Ã»¿ª£©\r\n");
+        return;
+    }
+
+    xTaskCreate(task_start, "task_start", TASK_STACK_DEPTH, NULL,
+                TASK_PRIORITY, &task_start_handle);
 
     vTaskStartScheduler();
+
+    /* ¶Ñ²»¹»Ê± vTaskStartScheduler Ö±½Ó·µ»Ø£¬²»Ğ´ÕâĞĞ»á±íÏÖµÃÏñËÀ»ú */
+    while (1)
+    {
+    }
 }
-
-
-
