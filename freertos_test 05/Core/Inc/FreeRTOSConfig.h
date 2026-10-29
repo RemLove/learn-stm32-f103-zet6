@@ -119,12 +119,16 @@ to exclude the API function. */
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY (5 << 4)//优先级 ≤5（数字更小，优先级更高）的中断：不能调用任何 FreeRTOS API
 
 #define configUSE_TIMERS    1
-#define configTIMER_TASK_PRIORITY 2
+#define configTIMER_TASK_PRIORITY 3
 /* 定时器命令队列长度。原来是 1，只有 1 个槽：task1 里连续发两条命令时，
-   第二条会阻塞等待守护任务腾槽。守护任务优先级 2 > task1 的 1 能解阻塞，
-   但一旦把守护优先级调到更低的数字以下，xTimerStart 传入的 portMAX_DELAY
+   第二条会阻塞等待守护任务腾槽。守护任务优先级 3 > task1 的 1 能解阻塞，
+   但一旦把守护优先级调到比调用者更低，xTimerStart 传入的 portMAX_DELAY
    就会真的永久死等。给 5 留余量。 */
 #define configTIMER_QUEUE_LENGTH 5
 #define configTIMER_TASK_STACK_DEPTH 256
+/* 打开"栈高水位"查询（uxTaskGetStackHighWaterMark）：
+   返回任务跑到现在栈最多用到离底还剩多少"字"，数字接近 0 就说明栈给少了。
+   默认是 0（关），要用必须显式开，否则链接期报 undefined symbol。 */
+#define INCLUDE_uxTaskGetStackHighWaterMark 1
 #endif /* FREERTOS_CONFIG_H */
 
