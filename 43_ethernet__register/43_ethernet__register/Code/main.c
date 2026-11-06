@@ -53,9 +53,17 @@ int main(void)
 					printf("connect from %d.%d.%d.%d:%d\r\n",dest_ip[0],dest_ip[1],dest_ip[2],dest_ip[3],dest_port);
 					printf("port %d connected\r\n",dest_port);
 				}
+				//接收数据
+				rxlen = getSn_RX_RSR(SOCKET_NUM); // 获取接收缓冲区数据长度
+				if(rxlen>0)
+				{
+					recv(SOCKET_NUM,rxbuffer,rxlen);
+					printf("recv %d bytes: ",rxlen);
+					send(SOCKET_NUM,rxbuffer,rxlen); // 回发数据
+				}
 				break;
 			case SOCK_CLOSE_WAIT:
-				close(SOCKET_NUM); // 断开连接
+				disconnect(SOCKET_NUM); // 断开连接
 				break;
 			default:
 				break;
