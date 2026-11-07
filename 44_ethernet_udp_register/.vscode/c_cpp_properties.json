@@ -11,16 +11,13 @@
                 "d:\\keil5\\stm32zet6\\44_ethernet_udp_register\\Intertface\\EEPROM",
                 "d:\\keil5\\stm32zet6\\44_ethernet_udp_register\\Hardware\\SPI",
                 "d:\\keil5\\stm32zet6\\44_ethernet_udp_register\\Intertface\\FLASH",
-                "d:\\keil5\\stm32zet6\\44_ethernet_udp_register\\43_ethernet__register\\Code",
-                "d:\\keil5\\stm32zet6\\44_ethernet_udp_register\\43_ethernet__register\\Start",
+                "d:\\keil5\\stm32zet6\\44_ethernet_udp_register\\44_ethernet_udp_register\\Code",
+                "d:\\keil5\\stm32zet6\\44_ethernet_udp_register\\44_ethernet_udp_register\\Start",
                 "d:\\keil5\\stm32zet6\\44_ethernet_udp_register\\Intertface\\ETHERNET",
                 "d:\\keil5\\stm32zet6\\44_ethernet_udp_register\\Intertface\\ETHERNET\\W5500",
                 "d:\\keil5\\stm32zet6\\44_ethernet_udp_register\\App",
-                "d:\\keil5\\stm32zet6\\44_ethernet_udp_register\\httpServer",
                 "D:\\keil5\\core\\ARM\\ARMCC\\include",
-                "D:\\keil5\\core\\ARM\\ARMCC\\include\\rw",
-                "d:\\keil5\\stm32zet6\\44_ethernet_udp_register\\44_ethernet_udp_register\\Start",
-                "d:\\keil5\\stm32zet6\\44_ethernet_udp_register\\44_ethernet_udp_register\\Code"
+                "D:\\keil5\\core\\ARM\\ARMCC\\include\\rw"
             ],
             "defines": [
                 "__CC_ARM",
