@@ -93,15 +93,12 @@ int main(void)
   while (1)
   {
     /* test: DS0 / DS1 alternate blinking, 500ms */
-    Led_On(&led0);
-    Led_Off(&led1);
-    HAL_Delay(500);
-    Led_Off(&led0);
-    Led_On(&led1);
-    HAL_Delay(500);
   /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
+    Led_Toggle(&led1);
+    HAL_Delay(500);
+    Led_Toggle(&led0);
+    HAL_Delay(500);
   }
   /* USER CODE END 3 */
 }
