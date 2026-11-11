@@ -25,6 +25,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include <stdio.h>
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -207,6 +208,8 @@ void TIM7_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+
+
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
   (void)xTask;  /* 任务句柄，接仿真器看更方便 */

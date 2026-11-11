@@ -1,4 +1,4 @@
-/* 当前文件职责：宏定义任务优先级、栈大小、任务句柄和全局唯一出口 */
+/* 当前文件职责：宏定义任务优先级、栈大小、任务句柄 全局唯一出口 */
 #ifndef __APP_TASK_H
 #define __APP_TASK_H
 
@@ -29,4 +29,5 @@ void TaskDisplay_Create(void);
 void TaskComm_Create(void);
 void TaskStorage_Create(void);
 void TaskMonitor_Create(void);
+
 #endif /* __APP_TASK_H */

@@ -1002,11 +1002,6 @@
           <GroupName>App</GroupName>
           <Files>
             <File>
-              <FileName>app_objects.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\App\app_objects.c</FilePath>
-            </File>
-            <File>
               <FileName>app_task.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\App\app_task.h</FilePath>
@@ -1015,6 +1010,26 @@
               <FileName>app_object.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\App\app_object.h</FilePath>
+            </File>
+            <File>
+              <FileName>app_objects.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\app_objects.c</FilePath>
+            </File>
+            <File>
+              <FileName>task_acquire.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\task_acquire.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_main.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\App\app_main.h</FilePath>
+            </File>
+            <File>
+              <FileName>app_main.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\app_main.c</FilePath>
             </File>
           </Files>
         </Group>

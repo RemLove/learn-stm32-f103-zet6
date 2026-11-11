@@ -29,9 +29,7 @@
 /* USER CODE BEGIN Includes */
 #include<stdio.h>
 #include "lcd.h"
-
-#include "FreeRTOS.h"
-#include "task.h"
+#include "app_main.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,7 +50,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-uint16_t adc_buff[1];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -104,11 +102,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
   LCD_Init();
   LCD_ClearAll(RED);
-
-  HAL_ADC_Start_DMA(&hadc1,(uint32_t*)adc_buff,1);
-  HAL_TIM_Base_Start(&htim3);
+  Main_Init();
   /* USER CODE END 2 */
-
+  
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
