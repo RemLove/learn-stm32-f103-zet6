@@ -1031,6 +1031,11 @@
               <FileType>1</FileType>
               <FilePath>..\App\app_main.c</FilePath>
             </File>
+            <File>
+              <FileName>task_display.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\task_display.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

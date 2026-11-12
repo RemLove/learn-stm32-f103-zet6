@@ -46,7 +46,7 @@ void LCD_SetArea(uint16_t x1,uint16_t y1,uint16_t w,uint16_t h);
 
 void LCD_ClearAll(uint16_t color);
 
-void LCD_WriteAsiciChar(uint16_t x,uint16_t y,uint16_t high,uint16_t fcolor,uint16_t bcolor,uint8_t c);
+void LCD_WriteAsiciChar(uint16_t x,uint16_t y,uint16_t high,uint16_t fcolor,uint16_t bcolor,uint32_t c);
 
 void LCD_WriteAsiciStr(uint16_t x, uint16_t y, uint16_t high, uint16_t fcolor, uint16_t bcolor, uint8_t* str);
 

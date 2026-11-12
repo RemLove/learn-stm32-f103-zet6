@@ -101,7 +101,7 @@ int main(void)
   MX_FSMC_Init();
   /* USER CODE BEGIN 2 */
   LCD_Init();
-  LCD_ClearAll(RED);
+  LCD_ClearAll(WHITE);
   Main_Init();
   /* USER CODE END 2 */
   

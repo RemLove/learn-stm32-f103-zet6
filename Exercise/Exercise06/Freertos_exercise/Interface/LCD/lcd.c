@@ -204,7 +204,7 @@ void LCD_ClearAll(uint16_t color)
     }
 }
 
-void LCD_WriteAsiciChar(uint16_t x, uint16_t y, uint16_t high, uint16_t fcolor, uint16_t bcolor, uint8_t c)
+void LCD_WriteAsiciChar(uint16_t x, uint16_t y, uint16_t high, uint16_t fcolor, uint16_t bcolor, uint32_t c)
 {
     // 1.先确定区域（SetArea 末尾已发 0x2C Memory Write，直接写数据即可）
     LCD_SetArea(x, y, high / 2, high);
