@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F103xE</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../Interface/LCD;../freertos/include;../freertos/portable/ARM_CM3;../App</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../Interface/LCD;../freertos/include;../freertos/portable/ARM_CM3;../App;../Interface/FLASH</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -1035,6 +1035,26 @@
               <FileName>task_display.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\App\task_display.c</FilePath>
+            </File>
+            <File>
+              <FileName>task_storage.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\task_storage.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Interface/FLASH</GroupName>
+          <Files>
+            <File>
+              <FileName>flash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Interface/FLASH/flash.c</FilePath>
+            </File>
+            <File>
+              <FileName>log.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Interface/FLASH/log.c</FilePath>
             </File>
           </Files>
         </Group>
