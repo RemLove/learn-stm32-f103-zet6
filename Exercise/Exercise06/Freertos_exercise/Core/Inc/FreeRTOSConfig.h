@@ -117,6 +117,8 @@ NVIC value of 255. */
 #define configUSE_COUNTING_SEMAPHORES   1        
 #define INCLUDE_uxTaskGetStackHighWaterMark  1   
 
+#define INCLUDE_xTaskGetIdleTaskHandle       1
+
 
 #endif /* FREERTOS_CONFIG_H */
 

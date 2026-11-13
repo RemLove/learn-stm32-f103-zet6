@@ -19,6 +19,8 @@ typedef struct
     uint32_t tick_ms;   /* 采集时刻的系统 tick */
     uint16_t raw_adc;   /* 0~4095 */
     uint16_t mv;        /* 毫伏值 */
+    /*保留字段，用来对齐字节 w25q32一次页写256字节 如果不加reserved 256/12无法写完，现在是256/16刚好整除 */
+    uint32_t reserved;
 }sample_t;
 /* 队列 */
 extern QueueHandle_t qDisplay;   /* 采集 -> 显示任务 */

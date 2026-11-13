@@ -27,5 +27,7 @@ void Main_Init(void)
     App_ObjectsInit();//创建队列信号量啥的
     TaskAcquire_Create();//创建acquire任务
 	TaskDisplay_Create();
+    TaskStorage_Create();
+    TaskMonitor_Create();
     vTaskStartScheduler();//启动调取器，cpu开始轮转
 }

@@ -1,4 +1,4 @@
-/* 当前文件职责：30Hz 显示任务——滚动波形 + 状态行 */
+/* 当前文件职责：10Hz 显示任务——滚动波形 + 状态行 */
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
@@ -36,7 +36,7 @@ static void TaskDisplay( void *pv )
     
     for (;;)
     {
-        xTaskDelayUntil(&xLastWake,pdMS_TO_TICKS(10));//10帧一秒刷新一次文字
+        xTaskDelayUntil(&xLastWake,pdMS_TO_TICKS(10));//100帧一秒刷新一次文字
         
         sample_t s={0};
         BaseType_t ret=pdFALSE;

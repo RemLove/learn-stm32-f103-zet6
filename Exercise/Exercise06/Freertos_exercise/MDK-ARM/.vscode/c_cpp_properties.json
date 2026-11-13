@@ -12,6 +12,7 @@
                 "d:\\keil5\\stm32zet6\\Exercise\\Exercise06\\Freertos_exercise\\freertos\\include",
                 "d:\\keil5\\stm32zet6\\Exercise\\Exercise06\\Freertos_exercise\\freertos\\portable\\ARM_CM3",
                 "d:\\keil5\\stm32zet6\\Exercise\\Exercise06\\Freertos_exercise\\App",
+                "d:\\keil5\\stm32zet6\\Exercise\\Exercise06\\Freertos_exercise\\Interface\\FLASH",
                 "D:\\keil5\\core\\ARM\\ARMCC\\include",
                 "D:\\keil5\\core\\ARM\\ARMCC\\include\\rw",
                 "d:\\keil5\\stm32zet6\\Exercise\\Exercise06\\Freertos_exercise\\MDK-ARM",
