@@ -152,7 +152,15 @@ void UsageFault_Handler(void)
 /**
   * @brief This function handles Debug monitor.
   */
+void DebugMon_Handler(void)
+{
+  /* USER CODE BEGIN DebugMonitor_IRQn 0 */
 
+  /* USER CODE END DebugMonitor_IRQn 0 */
+  /* USER CODE BEGIN DebugMonitor_IRQn 1 */
+
+  /* USER CODE END DebugMonitor_IRQn 1 */
+}
 
 /**
   * @brief This function handles Pendable request for system service.

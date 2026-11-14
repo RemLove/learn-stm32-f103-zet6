@@ -20,6 +20,7 @@
 #include "main.h"
 #include "adc.h"
 #include "dma.h"
+#include "iwdg.h"
 #include "spi.h"
 #include "tim.h"
 #include "usart.h"
@@ -31,6 +32,7 @@
 #include<stdio.h>
 #include "lcd.h"
 #include "app_main.h"
+#include "stm32f1xx_hal_rcc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -101,10 +103,25 @@ int main(void)
   MX_USART1_UART_Init();
   MX_FSMC_Init();
   MX_SPI2_Init();
+  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
+    
+  /* 复位源自报家门：IWDG 标志不会被普通复位清掉，读完软件清 */
+  if      ( __HAL_RCC_GET_FLAG( RCC_FLAG_IWDGRST ) )  printf( "[boot] last reset = IWDG !!\r\n" );
+  else if ( __HAL_RCC_GET_FLAG( RCC_FLAG_SFTRST ) )  printf( "[boot] last reset = software\r\n" );
+
+  else if ( __HAL_RCC_GET_FLAG( RCC_FLAG_PORRST ) )   printf( "[boot] last reset = power-on\r\n" );
+  else                                                printf( "[boot] last reset = NRST pin/debugger\r\n" );
+  __HAL_RCC_CLEAR_RESET_FLAGS();
+
+  /* 调试坑：调试器 halt 时狗默认照跑，断点停 >2s 就被咬复位。
+   * 加这行调试期冻结狗。⚠ 量产脱机前删掉 */
+  __HAL_DBGMCU_FREEZE_IWDG();
+
   LCD_Init();
   LCD_ClearAll(WHITE);
   Main_Init();
+ 
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -131,10 +148,11 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;

@@ -5,7 +5,7 @@
 #include "app_task.h"   //包含句柄
 #include "app_main.h"   //包含日志
 #include <stdio.h>      //包含snprintf(用于把数字转化为字符串)
-
+#include "iwdg.h"
 #define MON_PERIOD_MS (1000u)
 /* 巡查表数据结构 */
 typedef struct
@@ -33,9 +33,10 @@ static void TaskMonitor(void *pv)
     (void)pv;
     TickType_t last_time = xTaskGetTickCount();
     uint32_t round = 0; /* 巡检轮次，报表序号 */
+    
     for (;;)
     {
-
+        uint8_t all_alive=1;
         // 稳定1s查看一次
         xTaskDelayUntil(&last_time, MON_PERIOD_MS);
         // 循环检查 对比心跳是否变化 如果变化正常 不变化错误
@@ -45,13 +46,18 @@ static void TaskMonitor(void *pv)
             {
                 // 实现对应逻辑
                 App_Log("[mon] !! FROZEN: %s\r\n", s_items[i].name);
+                //如果有一项不变化了
+                all_alive=0;
             }
             else // 变化了 对应逻辑
             {
                 // 更新
                 s_items[i].last = *s_items[i].alive;
-                // 喂狗
             }
+        }
+        if(all_alive==1)
+        {
+            HAL_IWDG_Refresh(&hiwdg);
         }
         int n = snprintf(s_buf, sizeof(s_buf),
                              "[mon] r=%lu acq=%lu dsp=%lu sto=%lu hwm acq=%lu dsp=%lu sto=%lu idle=%lu heap=%lu dD=%lu dS=%lu\r\n",
