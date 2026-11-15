@@ -20,29 +20,38 @@ static void TaskStorage(void *pv)
 {
     (void)pv;
     Flash_Init();
-    sample_t s;
 
     for (;;)
     {
-        xQueueReceive(qStorage, &s, portMAX_DELAY);
-        memcpy(&s_page_buff[s_fill], &s, sizeof(sample_t));
-        s_fill += sizeof(sample_t);
-        if (s_fill >= PAGE_SIZE)
+        /* ★ 带超时接收，不能 portMAX_DELAY
+         * 队列断流时（采集任务停了）portMAX_DELAY 会把这个任务永久挂起，
+         * 循环末尾的心跳永远不执行 → monitor 判"冻死" → 不喂狗 → 2s 复位。
+         * 带超时后：最多 100ms 返回一次，攒不够一页就先转圈把心跳打上。*/
+        sample_t s;
+        if (xQueueReceive(qStorage, &s, pdMS_TO_TICKS(APP_WAIT_MS)) == pdPASS)
         {
-            if (s_wr_addr % SECTOR_SIZE == 0)
+            memcpy(&s_page_buff[s_fill], &s, sizeof(sample_t));
+            s_fill += sizeof(sample_t);
+            if (s_fill >= PAGE_SIZE)
             {
+                if (s_wr_addr % SECTOR_SIZE == 0)
+                {
+                    xSemaphoreTake(xMtxFlash, portMAX_DELAY);
+                    Flash_SectorErase(s_wr_addr);   /* 最长约 400ms，纯阻塞轮询 */
+                    xSemaphoreGive(xMtxFlash);
+                }
                 xSemaphoreTake(xMtxFlash, portMAX_DELAY);
-                Flash_SectorErase(s_wr_addr);
+                Flash_PageProgram(s_wr_addr, s_page_buff, PAGE_SIZE);
                 xSemaphoreGive(xMtxFlash);
-            }
-            xSemaphoreTake(xMtxFlash, portMAX_DELAY);
-            Flash_PageProgram(s_wr_addr, s_page_buff, PAGE_SIZE);
-            xSemaphoreGive(xMtxFlash);
 
-            s_wr_addr += PAGE_SIZE;
-            if(s_wr_addr>=FLASH_TOTAL_SIZE) {s_wr_addr=0;}
-            s_fill = 0;
+                s_wr_addr += PAGE_SIZE;
+                if(s_wr_addr>=FLASH_TOTAL_SIZE) {s_wr_addr=0;}
+                s_fill = 0;
+            }
+            /* 业务量：真收到一条记录才算 */
+            g_workStorage++;
         }
+        /* 心跳：无条件 +1，证明本任务还在转 */
         g_aliveStorage++;
     }
 }

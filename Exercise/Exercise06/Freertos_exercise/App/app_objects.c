@@ -16,6 +16,10 @@ volatile uint32_t g_aliveAcquire = 0;
 volatile uint32_t g_aliveDisplay = 0;
 volatile uint32_t g_aliveComm    = 0;
 volatile uint32_t g_aliveStorage = 0;
+volatile uint32_t g_workAcquire  = 0;
+volatile uint32_t g_workDisplay  = 0;
+volatile uint32_t g_workComm     = 0;
+volatile uint32_t g_workStorage  = 0;
 volatile uint32_t g_dropDisplay  = 0;
 volatile uint32_t g_dropStorage  = 0;
 
